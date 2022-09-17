@@ -34,11 +34,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let body = reqwest::blocking::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
 
-	//let offset = body.find("Larva di Calpina").unwrap();
-	//let offset_end = body.find("NewPP limit report").unwrap();
-
-	//println!("{:?}", body);
-
 	let offset  = body.find("wiki_table_filter").unwrap();
 	let slice_1 = body.get((offset - 11)..).unwrap();
 	
@@ -47,6 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	//println!("{}", slice_of_page.unwrap());
 
+	let base_url = "https://golarion.altervista.org";
 	let mut array_of_paths = vec![];
 
 	let mut next_slice_index = slice_of_page.unwrap().find("href=");
@@ -57,18 +53,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		if next_slice.is_none() { println!("[ERROR]"); return Ok(()); }
 
 		let page_path   = get_path_from_slice(next_slice.unwrap());
-		if page_path.is_some() { array_of_paths.push(page_path.unwrap()); }
+		if page_path.is_some() {
+			let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
+			array_of_paths.push(s_to_push);
+		}
 
 		next_slice_index = next_slice.unwrap().find("href=");
 	}
-	
-	let base_url = "https://golarion.altervista.org";
 
+/*
 	for p in array_of_paths
 	{
 		let full_link = base_url.to_string().clone() + &p.to_string();
 		println!("{}", full_link);
 	}
+*/
+	let mob_body = reqwest::blocking::get(&array_of_paths[1254])?.text()?;
+
+	let offset_begin  = mob_body.find("<h1>").unwrap();
+	let begin_mob     = mob_body.get(offset_begin..).unwrap();
+	
+	let offset_end = begin_mob.find("<!--").unwrap();
+	let mob_page = begin_mob.get(..offset_end);
+	println!("{}", mob_page.unwrap());
 
 	Ok(())
 }
