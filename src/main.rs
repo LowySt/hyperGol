@@ -53,6 +53,56 @@ fn eat_n_html_tags(mob_data: &str, num: i32) -> Option<&str> {
 	return next;
 }
 
+macro_rules! eat_advance_get {
+	($mob_page:expr, $n:expr) => {
+		{
+			let next = eat_n_html_tags(&$mob_page, $n);
+			if next.is_none() { return Ok(()); }
+		
+			$mob_page = next.unwrap();
+			let val = $mob_page.get(..$mob_page.find('<').unwrap()).unwrap();
+			val
+		}
+	};
+}
+
+macro_rules! skip_to {
+	($mob_page:expr, $tag:expr) => {
+		{
+			let len = $tag.len();
+			let begin = $mob_page.find($tag);
+			if begin.is_none() { println!("[ERROR] Couldn't find tag {}", $tag); return Ok(()); }
+			
+			let val   = $mob_page.get((begin.unwrap() + len)..);
+			if val.is_none() { println!("[ERROR] Couldn't slice mob_page past tag {}", $tag); return Ok(()); }
+
+			let val2 = val.unwrap();
+			val2
+		}
+	};
+}
+
+fn clear_tags_until(data_slice: &str, delim: char) -> Option<String> {
+
+	let check_delim = data_slice.find(delim);
+	if check_delim.is_none() { println!("[ERROR] Could not find delimiter {}", delim); return None; }
+
+	let result_slice_tmp = data_slice.get(..check_delim.unwrap()+1);
+	if result_slice_tmp.is_none() { println!("[ERROR] Could not get until delimiter {}", delim); return None; }
+
+	let mut result_slice = String::from(result_slice_tmp.unwrap());
+	loop
+	{
+		let begin = result_slice.find("<");
+		if begin.is_none() { return Some(result_slice); }
+
+		let end = result_slice.find(">");
+		if end.is_none() { println!("[ERROR] Malformed html?"); return None; }
+
+		result_slice.replace_range(begin.unwrap()..end.unwrap()+1, "");
+	}
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let body = reqwest::blocking::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
@@ -103,25 +153,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut mob_page = mob_page.unwrap();
 	//Dirty Mob Parsing
 	{
-		let next_mob_page = eat_n_html_tags(&mob_page, 2);
-		if next_mob_page.is_none() { return Ok(()); }
-		
-		mob_page = next_mob_page.unwrap();
 
-		let name = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		let name = eat_advance_get!(mob_page, 2);
 		println!("Name: {}", name);
-
-		let next_mob_page = eat_n_html_tags(&mob_page, 4);
-		if next_mob_page.is_none() { return Ok(()); }
-
-		let gs = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		
+		let gs = eat_advance_get!(mob_page, 4);
 		println!("GS: {}", gs);
 		
-		let next_mob_page = eat_n_html_tags(&mob_page, 2);
-		if next_mob_page.is_none() { return Ok(()); }
-
-		let pe = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		let pe = eat_advance_get!(mob_page, 2);
 		println!("PE: {}", pe);
+
+		let short_desc = eat_advance_get!(mob_page, 6);
+		println!("{}", short_desc);
+
+		let alignment = eat_advance_get!(mob_page, 4);
+		println!("Alignment: {}", alignment);
+
+		let typ = eat_advance_get!(mob_page, 4);
+		println!("Type: {}", typ);
+
+		let size = eat_advance_get!(mob_page, 1);
+		println!("Size: {}", size);
+
+		mob_page = skip_to!(mob_page, "title=\"CA\">");
+
+		let ca = clear_tags_until(mob_page, ')');
+		if ca.is_some() { println!("{}", ca.unwrap()); }
+
+		mob_page = skip_to!(mob_page, "title=\"PF\">");
+
+		let pf = clear_tags_until(mob_page, ')');
+		if pf.is_some() { println!("{}", pf.unwrap()); }
+
+		mob_page = skip_to!(mob_page, "title=\"Tiri Salvezza\">");
+		
+		let saving_throws = eat_advance_get!(mob_page, 2);
+		println!("Saving Throws: {}", saving_throws);
 	}
 
 
