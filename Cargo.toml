@@ -1,5 +1,5 @@
 [package]
-name = "hyperGol"
+name = "hyper_gol"
 version = "0.1.0"
 edition = "2021"
 

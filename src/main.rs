@@ -30,6 +30,29 @@ fn get_path_from_slice(begin: &str) -> Option<&str> {
 	return Some(resource);
 }
 
+fn eat_html_tag(mob_data: &str) -> Option<&str> {
+	let tag_begin_index = mob_data.find('<');
+	if tag_begin_index.is_none() { return None; }
+
+	let tag_end_index   = mob_data.find('>');
+	if tag_end_index.is_none() { return None; }
+
+	return mob_data.get(tag_end_index.unwrap()+1..);
+}
+
+fn eat_n_html_tags(mob_data: &str, num: i32) -> Option<&str> {
+	let mut prev = mob_data;
+	let mut next: Option<&str> = None;
+	for _ in 0..num {
+		next = eat_html_tag(prev);
+		if next.is_none() { return None; }
+		
+		prev = next.unwrap();
+	}
+
+	return next;
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let body = reqwest::blocking::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
@@ -68,14 +91,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("{}", full_link);
 	}
 */
-	let mob_body = reqwest::blocking::get(&array_of_paths[1254])?.text()?;
+	let mob_body_opt = reqwest::blocking::get(&array_of_paths[1254])?.text()?;
 
-	let offset_begin  = mob_body.find("<h1>").unwrap();
-	let begin_mob     = mob_body.get(offset_begin..).unwrap();
+	let offset_begin  = mob_body_opt.find("<h1>").unwrap();
+	let begin_mob     = mob_body_opt.get(offset_begin..).unwrap();
 	
 	let offset_end = begin_mob.find("<!--").unwrap();
 	let mob_page = begin_mob.get(..offset_end);
-	println!("{}", mob_page.unwrap());
+	if mob_page.is_none() { return Ok(()); }
+	
+	let mut mob_page = mob_page.unwrap();
+	//Dirty Mob Parsing
+	{
+		let next_mob_page = eat_n_html_tags(&mob_page, 2);
+		if next_mob_page.is_none() { return Ok(()); }
+		
+		mob_page = next_mob_page.unwrap();
+
+		let name = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		println!("Name: {}", name);
+
+		let next_mob_page = eat_n_html_tags(&mob_page, 4);
+		if next_mob_page.is_none() { return Ok(()); }
+
+		let gs = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		println!("GS: {}", gs);
+		
+		let next_mob_page = eat_n_html_tags(&mob_page, 2);
+		if next_mob_page.is_none() { return Ok(()); }
+
+		let pe = mob_page.get(..mob_page.find('<').unwrap()).unwrap();
+		println!("PE: {}", pe);
+	}
+
+
+	//println!("{}", mob_page.unwrap());
 
 	Ok(())
 }
