@@ -1,0 +1,48 @@
+version(1);
+
+project_name = "hyperGol";
+
+patterns =
+{
+"*.rs",
+"*.4coder",
+};
+
+blacklist_patterns =
+{
+
+};
+
+projCodePath = {".", .relative = true, .recursive = true};
+load_paths =
+{
+	{ .paths = { projCodePath }, .os = "win" },
+	{.os = "mac"},
+	{.os = "linux"},
+};
+
+command_list =
+{
+	{
+		.name = "build_debug",
+		.out = "*build*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+		.cmd = { {"cargo build", .os = "win"}, {"build.sh", .os = "linux"} },
+	},
+	
+	{
+		.name = "run_debug",
+		.out = "*run*",
+		.footer_panel = false,
+		.save_dirty_files = false,
+		.cursor_at_end = true,
+		.cmd = { {"cargo run", .os = "win" } }
+	},
+
+
+};
+
+fkey_command[1]  = "build_debug";
+fkey_command[2]  = "run_debug";
