@@ -1,7 +1,9 @@
 use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::BufWriter;
 use std::io::prelude::*;
 
-static BLACKLIST: [&str; 53] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse"];
+static BLACKLIST: [&str; 57] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo"];
 
 fn check_path_against_blacklist(p: &str) -> bool {
 	for v in BLACKLIST {
@@ -107,6 +109,7 @@ fn clear_all_tags(data_slice: &str) -> String {
 	}
 }
 
+/*
 macro_rules! skip_to {
 	($mob_page:expr, $tag:expr) => {
 		{
@@ -121,6 +124,22 @@ macro_rules! skip_to {
 			val2
 		}
 	};
+}
+*/
+
+static GLOBAL_NULL: &str = "";
+
+fn skip_to<'a>(data_slice: &'a str, tag: &str) -> &'a str
+{
+    let len = tag.len();
+    let begin = data_slice.find(tag);
+    
+    if begin.is_none() { return GLOBAL_NULL; }
+    
+    let res = data_slice.get((begin.unwrap() + len)..);
+    if res.is_none() { println!("[ERROR] Couldn't slice mob_page past tag {}", tag); return GLOBAL_NULL; }
+    
+    return res.unwrap();
 }
 
 fn clear_tag(data_slice: &str, tag_begin: &str, tag_end: &str) -> String {
@@ -153,8 +172,6 @@ fn get_slice_inside_tags(data_slice: &str, tag_begin: String, tag_end: String) -
     
     return (result.unwrap(), next_data.unwrap());
 }
-
-static GLOBAL_NULL: &str = "";
 
 fn get_until<'a>(data_slice: &'a str, until: &str) -> (&'a str, &'a str)
 {
@@ -200,9 +217,34 @@ fn get_until_arr<'a>(data_slice: &'a str, until: &[&str], start_idx: usize) -> (
     return (result.unwrap(), next.unwrap(), idx);
 }
 
+fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
+{
+    let mut result_arr = vec![];
+    
+    let mut next: &str = data_slice;
+    let mut el: &str;
+    let mut i: usize = 0;
+    loop
+    {
+        (el, next, i)  = get_until_arr(next, until, i);
+        if el.is_empty() { break; }
+        result_arr.push(el);
+    }
+    
+    let (last, _) = get_until(next, "");
+    result_arr.push(last);
+    
+    return result_arr;
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
-	let body = reqwest::blocking::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
+    use std::time::Instant;
+    let now = Instant::now();
+    
+    let client = reqwest::blocking::Client::new();
+    
+	let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
     
 	let offset  = body.find("wiki_table_filter").unwrap();
 	let slice_1 = body.get((offset - 11)..).unwrap();
@@ -239,189 +281,153 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     */
     
-    let test_index = [1255, 1946, 2170, array_of_paths.len()-1];
-    let mob_body_opt = reqwest::blocking::get(&array_of_paths[test_index[0]])?.text()?;
+    //let test_index = [1255, 1946, 2170, array_of_paths.len()-1];
     
-	let offset_begin  = mob_body_opt.find("<h1>").unwrap();
-	let begin_mob     = mob_body_opt.get(offset_begin..).unwrap();
-	
-	let offset_end = begin_mob.find("<!--").unwrap();
-	let mob_page_tmp = begin_mob.get(..offset_end);
-	if mob_page_tmp.is_none() { return Ok(()); }
-	
-	let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\">", "</div>");
-    let mut mob_page = mob_page_tmp.as_str();
-    
-    let mut tmp_file = File::create("mob.html")?;
-    tmp_file.write_all(mob_page.as_bytes())?;
-    
-    
-    //NOTE: Let's try extracting entire tag blocks to parse the mob data
-    let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>".to_string(), "</h1>".to_string());
-    mob_page = next;
-    
-    let (race_class_info, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">".to_string(), "</div>".to_string());
-    mob_page = next;
-    
-    let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
-    mob_page = next;
-    
-    mob_page = skip_to!(mob_page, "id=\"Difesa\"");
-    let (defense_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
-    mob_page = next;
-    
-    mob_page = skip_to!(mob_page, "id=\"Attacco\"");
-    let (attack_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<h2>".to_string());
-    mob_page = next;
-    
-    mob_page = skip_to!(mob_page, "id=\"Statistiche\"");
-    let (stats_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
-    mob_page = next;
-    
-    mob_page = skip_to!(mob_page, "id=\"Capacità_Speciali\"");
-    let (specials_block, next) = get_slice_inside_tags(mob_page, "<h3>".to_string(), "<h2><span class=\"mw-headline\" id=\"Ecologia\">".to_string());
-    mob_page = next;
-    
-    let (ecology_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
-    mob_page = next;
-    
-    mob_page = skip_to!(mob_page, "id=\"Descrizione\"");
-    let (desc_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<hr />".to_string());
-    mob_page = next;
-    
-    let (source_block, _) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
-    
-    /*
+    for file_idx in 0..100//array_of_paths.len()
     {
-        println!("\n{}", mob_header);
-        println!("\n{}", race_class_info);
-        println!("\n{}", misc_info);
-        println!("\n{}", defense);
-        println!("\n{}", attack);
-        println!("\n{}", stats);
-        println!("\n{}", specials);
-        println!("\n{}", ecology);
-        println!("\n{}", desc);
-        println!("\n{}", source);
-    }
-    */
-    
-    // NOTE: Now we parse the sub sections.
-    let head     = clear_all_tags(mob_header);
-    let class    = clear_all_tags(race_class_info);
-    let misc     = clear_all_tags(misc_info);
-    let defense  = clear_all_tags(defense_block);
-    let attack   = clear_all_tags(attack_block);
-    let stats    = clear_all_tags(stats_block);
-    let specials = clear_all_tags(specials_block);
-    let ecology  = clear_all_tags(ecology_block);
-    let desc     = clear_all_tags(desc_block);
-    let source   = clear_all_tags(source_block);
-    
-    
-    {
-        //println!("\nHead: {}", head);
-        //println!("\nClass: {}", class);
-        //println!("\nMisc: {}", misc);
-        //println!("\nDefense: {}", defense);
-        //println!("\nAttack: {}", attack);
-        //println!("\nStats: {}", stats);
-        println!("\nSpecials: {}", specials);
-        println!("\nEcology: {}", ecology);
-        println!("\nDesc: {}", desc);
-        println!("\nSource: {}", source);
-    }
-    
-    let (name, next) = get_until(&head, "GS");
-    let (gs, next)   = get_until(next, "PE");
-    let (pe, _next)  = get_until(next, "");
-    
-    let (desc, next)   = get_until(&class, "Allineamento");
-    let (align, next)  = get_until(next, "Categoria");
-    let (categ, _next) = get_until(next, "");
-    
-    let (init, next)    = get_until(&misc, "Sensi");
-    let (senses, _next) = get_until(next, "");
-    
-    let (ac, next)          = get_until(&defense, "PF");
-    let (pf, next)          = get_until(next, "Tiri Salvezza");
-    let (st, next)          = get_until(next, "Immunità");
-    let (immunities, next)  = get_until(next, "Capacità Difensive");
-    let (def_skills, _next) = get_until(next, "");
-    
-    
-    let mut attack_arr = vec![];
-    let element_check = ["Mischia", "Distanza", "Spazio", "Portata", 
-                         "Attacchi Speciali", "Magia Psichica", "Capacità Magiche", "Incantesimi" ];
-    
-    let mut next: &str = &attack;
-    let mut el: &str;
-    let mut i: usize = 0;
-    loop
-    {
-        (el, next, i)  = get_until_arr(next, &element_check, i);
-        if el.is_empty() { break; }
-        attack_arr.push(el);
-    }
-    
-    let (last, _) = get_until(next, "");
-    attack_arr.push(last);
-    
-    
-    let (scores, next)     = get_until(&stats, "Bonus di Attacco Base");
-    let (bab, next)        = get_until(next, "BMC");
-    let (cmb, next)        = get_until(next, "DMC");
-    let (cmd, next)        = get_until(next, "Talenti");
-    let (talents, next)    = get_until(next, "Abilità");
-    let (skills, next)     = get_until(next, "Linguaggi");
-    let (lang, next)       = get_until(next, "Modificatori Razziali");
-    let (race_mod, next)   = get_until(next, "Qualità Speciali");
-    let (spec_qual, _next) = get_until(next, "");
-    
-    
-    let mut specials_arr = vec![];
-    let mut next: &str = &specials;
-    /* Infinite loops. Don't know why?
-    loop
-    {
-        let (v, next) = get_until(next, "\n\n");
-        if v.is_empty() { break; }
-        specials_arr.push(v);
-    }
-    */
-    {
-        println!("{}", name);
-        println!("{}", gs);
-        println!("{}", pe);
+        //println!("{}", array_of_paths[83]);
         
-        println!("{}", desc);
-        println!("{}", align);
-        println!("{}", categ);
+        let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
         
-        println!("{}", init);
-        println!("{}", senses);
+        //let mut mob_dirty_file = File::create("mob_dirty.html")?;
+        //mob_dirty_file.write_all(mob_body_opt.as_bytes())?;
         
-        println!("{}", ac);
-        println!("{}", pf);
-        println!("{}", st);
-        println!("{}", immunities);
-        println!("{}", def_skills);
+        let offset_begin = mob_body_opt.find("<h1>");
+        if offset_begin.is_none() {
+            println!("[ERROR] Probably non-mob page: {}", array_of_paths[file_idx]);
+            return Ok(());
+        }
         
-        for v in attack_arr { println!("{}", v); }
+        let begin_mob     = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
         
-        println!("{}", scores);
-        println!("{}", bab);
-        println!("{}", cmb);
-        println!("{}", cmd);
-        println!("{}", talents);
-        println!("{}", skills);
-        println!("{}", lang);
-        println!("{}", race_mod);
-        println!("{}", spec_qual);
+        let offset_end = begin_mob.find("<!--").unwrap();
+        let mob_page_tmp = begin_mob.get(..offset_end);
+        if mob_page_tmp.is_none() { return Ok(()); }
         
-        for v in specials_arr { println!("{}", v); }
+        let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\">", "</div>");
+        let mut mob_page = mob_page_tmp.as_str();
+        
+        let mut tmp_file = File::create("mob.html")?;
+        tmp_file.write_all(mob_page.as_bytes())?;
+        
+        
+        //NOTE: Let's try extracting entire tag blocks to parse the mob data
+        let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>".to_string(), "</h1>".to_string());
+        mob_page = next;
+        
+        let (race_class_info, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">".to_string(), "</div>".to_string());
+        mob_page = next;
+        
+        let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+        mob_page = next;
+        
+        mob_page = skip_to(mob_page, "id=\"Difesa\"");
+        let (defense_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+        mob_page = next;
+        
+        mob_page = skip_to(mob_page, "id=\"Attacco\"");
+        let (attack_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<h2>".to_string());
+        mob_page = next;
+        
+        mob_page = skip_to(mob_page, "id=\"Statistiche\"");
+        let (stats_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+        mob_page = next;
+        
+        let mut specials_block: &str = "";
+        
+        mob_page = skip_to(mob_page, "id=\"Capacità_Speciali\"");
+        if mob_page == GLOBAL_NULL 
+        {
+            mob_page = skip_to(next, "id=\"Ecologia\">");
+        }
+        else
+        {
+            let (specials_block_tmp, next) = get_slice_inside_tags(mob_page, "<h3>".to_string(), "<h2><span class=\"mw-headline\" id=\"Ecologia\">".to_string());
+            specials_block = specials_block_tmp;
+            mob_page = next;
+        }
+        
+        let (ecology_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+        mob_page = next;
+        
+        mob_page = skip_to(mob_page, "id=\"Descrizione\"");
+        let (desc_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<hr />".to_string());
+        mob_page = next;
+        
+        let (source_block, _) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+        
+        // NOTE: Now we parse the sub sections.
+        let mut specials = String::new();
+        
+        let head     = clear_all_tags(mob_header);
+        let class    = clear_all_tags(race_class_info);
+        let misc     = clear_all_tags(misc_info);
+        let defense  = clear_all_tags(defense_block);
+        let attack   = clear_all_tags(attack_block);
+        let stats    = clear_all_tags(stats_block);
+        if !specials_block.is_empty() { specials = clear_all_tags(specials_block); }
+        let ecology  = clear_all_tags(ecology_block);
+        let desc     = clear_all_tags(desc_block);
+        let source   = clear_all_tags(source_block);
+        
+        
+        let head_check     = ["GS", "PE"];
+        let head_arr   = fill_array_from_available(&head, &head_check);
+        
+        let class_check    = ["Allineamento:", "Categoria:"];
+        let class_arr  = fill_array_from_available(&class, &class_check);
+        
+        let misc_check     = ["Sensi:"];
+        let misc_arr   = fill_array_from_available(&misc, &misc_check);
+        
+        let defense_check  = ["PF:", "Tiri Salvezza:", "Immunità:", "Capacità Difensive:"];
+        let defense_arr    = fill_array_from_available(&defense, &defense_check);
+        
+        let attack_check   = ["Mischia:", "Distanza:", "Spazio:", "Portata:", 
+                              "Attacchi Speciali", "Magia Psichica", "Capacità Magiche", "Incantesimi" ];
+        let attack_arr = fill_array_from_available(&attack, &attack_check);
+        
+        let stats_check    = ["Bonus di Attacco Base:", "BMC:", "DMC:", "Talenti:", "Abilità:", 
+                              "Linguaggi:", "Modificatori Razziali:", "Qualità Speciali:" ];
+        let stats_arr  = fill_array_from_available(&stats, &stats_check);
+        
+        
+        let ecology_check  = ["Organizzazione:", "Tesoro:"];
+        let ecology_arr    = fill_array_from_available(&ecology, &ecology_check);
+        
+        
+        let mut tmp_file = BufWriter::new(OpenOptions::new().append(true).create(true).open("result.txt").unwrap());
+        
+        tmp_file.write(file_idx.to_string().as_bytes())?;
+        tmp_file.write("\n".as_bytes())?;
+        for v in head_arr { tmp_file.write(v.as_bytes())?; }
+        tmp_file.write("\n".as_bytes())?;
+        tmp_file.flush()?;
+        
+        /*
+        {
+            
+            for v in head_arr    { println!("{}", v); }
+            for v in class_arr   { println!("{}", v); }
+            for v in misc_arr    { println!("{}", v); }
+            for v in defense_arr { println!("{}", v); }
+            for v in attack_arr  { println!("{}", v); }
+            for v in stats_arr   { println!("{}", v); }
+            
+            if !specials.is_empty() { println!("{}", specials); } //NOTE: Specials is already what I want.
+            
+            for v in ecology_arr { println!("{}", v); }
+            
+            println!("{}", desc);     //NOTE: Desc is already what I want.
+            
+            println!("{}", source);   //NOTE: Source is already what I want.
+        }
+        */
         
     }
+    
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
     
     Ok(())
 }
