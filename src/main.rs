@@ -36,65 +36,6 @@ fn get_path_from_slice(begin: &str) -> Option<&str> {
 	return Some(resource);
 }
 
-/*
-fn eat_html_tag(mob_data: &str) -> Option<&str> {
-	let tag_begin_index = mob_data.find('<');
-	if tag_begin_index.is_none() { return None; }
-    
-	let tag_end_index   = mob_data.find('>');
-	if tag_end_index.is_none() { return None; }
-    
-	return mob_data.get(tag_end_index.unwrap()+1..);
-}
-
-fn eat_n_html_tags(mob_data: &str, num: i32) -> Option<&str> {
-	let mut prev = mob_data;
-	let mut next: Option<&str> = None;
-	for _ in 0..num {
-		next = eat_html_tag(prev);
-		if next.is_none() { return None; }
-		
-		prev = next.unwrap();
-	}
-    
-	return next;
-}
-
-macro_rules! eat_advance_get {
-	($mob_page:expr, $n:expr) => {
-		{
-			let next = eat_n_html_tags(&$mob_page, $n);
-			if next.is_none() { return Ok(()); }
-            
-			$mob_page = next.unwrap();
-			let val = $mob_page.get(..$mob_page.find('<').unwrap()).unwrap();
-			val
-		}
-	};
-}
-
-fn clear_tags_until(data_slice: &str, delim: char) -> Option<String> {
-    
-	let check_delim = data_slice.find(delim);
-	if check_delim.is_none() { println!("[ERROR] Could not find delimiter {}", delim); return None; }
-    
-	let result_slice_tmp = data_slice.get(..check_delim.unwrap()+1);
-	if result_slice_tmp.is_none() { println!("[ERROR] Could not get until delimiter {}", delim); return None; }
-    
-	let mut result_slice = String::from(result_slice_tmp.unwrap());
-	loop
-	{
-		let begin = result_slice.find("<");
-		if begin.is_none() { return Some(result_slice); }
-        
-		let end = result_slice.find(">");
-		if end.is_none() { println!("[ERROR] Malformed html?"); return None; }
-        
-		result_slice.replace_range(begin.unwrap()..end.unwrap()+1, "");
-	}
-}
-*/
-
 fn clear_all_tags(data_slice: &str) -> String {
     
 	let mut result = String::from(data_slice);
@@ -109,24 +50,6 @@ fn clear_all_tags(data_slice: &str) -> String {
 		result.replace_range(begin.unwrap()..end.unwrap()+1, "");
 	}
 }
-
-/*
-macro_rules! skip_to {
-	($mob_page:expr, $tag:expr) => {
-		{
-			let len = $tag.len();
-			let begin = $mob_page.find($tag);
-			if begin.is_none() { println!("[ERROR] Couldn't find tag {}", $tag); return Ok(()); }
-			
-			let val   = $mob_page.get((begin.unwrap() + len)..);
-			if val.is_none() { println!("[ERROR] Couldn't slice mob_page past tag {}", $tag); return Ok(()); }
-            
-			let val2 = val.unwrap();
-			val2
-		}
-	};
-}
-*/
 
 static GLOBAL_NULL: &str = "";
 
@@ -177,45 +100,25 @@ fn get_slice_inside_tags(data_slice: &str, tag_begin: String, tag_end: String) -
 fn get_until<'a>(data_slice: &'a str, until: &str) -> (&'a str, &'a str)
 {
     let end_idx: usize;
+    let tag_len = until.len();
     
     if until.len() == 0 { end_idx = data_slice.len(); }
     else
-    { 
-        let end_idx_tmp = data_slice.find(until);
-        if end_idx_tmp.is_none() { return (GLOBAL_NULL, GLOBAL_NULL); }
-        end_idx = end_idx_tmp.unwrap();
-    }
-    
-    let result = data_slice.get(..end_idx);
-    if result.is_none() { return (GLOBAL_NULL, GLOBAL_NULL); }
-    
-    let next = data_slice.get(end_idx..);
-    if next.is_none() { return (GLOBAL_NULL, GLOBAL_NULL); }
-    
-    return (result.unwrap(), next.unwrap());
-}
-
-fn get_until_arr<'a>(data_slice: &'a str, until: &[&str], start_idx: usize) -> (&'a str, &'a str, usize)
-{
-    let mut found = false;
-    let mut end_idx: usize = 0;
-    let mut idx: usize = 0;
-    
-    for (i, v) in until[start_idx..].iter().enumerate()
     {
-        let index = data_slice.find(v);
-        if index.is_some() { found = true; idx = i+1+start_idx; end_idx = index.unwrap(); break; }
+        let index = data_slice.find(until);
+        if index.is_none() { return (GLOBAL_NULL, data_slice) }
+        
+        end_idx = index.unwrap();
     }
     
-    if !found { return (GLOBAL_NULL, data_slice, 99); }
-    
     let result = data_slice.get(..end_idx);
-    if result.is_none() { return (GLOBAL_NULL, data_slice, 99); }
+    if result.is_none() { println!("[ERROR] Malformed mob page\n"); panic!(); }
     
-    let next = data_slice.get(end_idx..);
-    if next.is_none() { return (GLOBAL_NULL, data_slice, 99); }
+    let tag_len = until.len();
+    let next = data_slice.get(end_idx+tag_len..);
+    if next.is_none() { println!("[ERROR] Malformed mob page\n"); panic!(); }
     
-    return (result.unwrap(), next.unwrap(), idx);
+    return (result.unwrap().trim(), next.unwrap());
 }
 
 fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
@@ -225,29 +128,80 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     let mut next: &str = data_slice;
     let mut el: &str;
     let mut i: usize = 0;
-    loop
+    
+    let mut missed_i: usize = 99;
+    
+    for i in 0..until.len()
     {
-        (el, next, i)  = get_until_arr(next, until, i);
-        if el.is_empty() { break; }
-        result_arr.push(el);
+        (el, next)  = get_until(next, until[i]);
+        
+        if el == GLOBAL_NULL && missed_i == 99 { missed_i = i; }
+        
+        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el); }
+        else                                   { result_arr.insert(missed_i, el); missed_i = 99; }
     }
     
     let (last, _) = get_until(next, "");
-    result_arr.push(last);
+    if missed_i == 99 { result_arr.push(last); }
+    else              { result_arr.insert(missed_i, last); }
     
     return result_arr;
 }
 
-fn add_entry_to_buffer_if_missing(buf: &mut ByteBuffer, entry_data: &[u8], entry_len: usize)
+fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> usize
 {
+    let entry_data = entry_data_str.as_bytes();
+    let entry_len  = entry_data_str.len();
+    
+    let mut cursor: usize = 0;
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return cursor; }
+    
+    //Bullshit bullshit bullshit
+    let mut converted_data: Vec<u8> = Vec::with_capacity(entry_len*4);
+    for i in 0..entry_len 
+    { 
+        converted_data.push(entry_data[i]);
+        converted_data.push(0);
+        converted_data.push(0);
+        converted_data.push(0);
+    }
+    
+    cursor = buf.get_wpos();
+    
+    //NOTE we convert the string to u32 so we need the size to be 4 times larger
+    let entry_bytes = (entry_len*4);
+    buf.write_u8(entry_bytes as u8);
+    buf.write_bytes(converted_data.as_slice());
+    
+    let write_cursor = buf.get_wpos();
+    buf.set_wpos(0);
+    buf.write_u32((buf.len() - 4) as u32);
+    buf.set_wpos(write_cursor);
+    
+    return cursor;
+}
+
+fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> usize
+{
+    let entry_data = entry_data_str.as_bytes();
+    let entry_len  = entry_data_str.len();
+    
+    let mut cursor: usize = 0;
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return cursor; }
+    
     //NOTE: The first 4 bytes of the buffer represent the total length in bytes
     buf.set_rpos(4);
     while buf.get_rpos() < buf.len()
     {
+        cursor         = buf.get_rpos();
         let check_size = buf.read_u8();
         let check_data = buf.read_bytes(check_size as usize);
         
-        if entry_data == check_data { return; }
+        if entry_data == check_data { return cursor; }
     }
     
     //Bullshit bullshit bullshit
@@ -260,6 +214,8 @@ fn add_entry_to_buffer_if_missing(buf: &mut ByteBuffer, entry_data: &[u8], entry
         converted_data.push(0);
     }
     
+    cursor = buf.get_wpos();
+    
     //NOTE we convert the string to u32 so we need the size to be 4 times larger
     let entry_bytes = (entry_len*4);
     buf.write_u8(entry_bytes as u8);
@@ -269,6 +225,8 @@ fn add_entry_to_buffer_if_missing(buf: &mut ByteBuffer, entry_data: &[u8], entry
     buf.set_wpos(0);
     buf.write_u32((buf.len() - 4) as u32);
     buf.set_wpos(write_cursor);
+    
+    return cursor;
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -321,22 +279,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut name_buffer           = ByteBuffer::from_bytes(&[0u8;64]);
     let mut gs_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
     let mut pe_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut alignment_buffer      = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut sizes_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
     let mut senses_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
     let mut auras_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
     let mut immunities_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
     let mut resistances_buffer    = ByteBuffer::from_bytes(&[0u8;64]);
     let mut weaknesses_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut specialAttacks_buffer = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut special_attack_buffer = ByteBuffer::from_bytes(&[0u8;64]);
     let mut spells_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
     let mut talents_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     let mut terrains_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
     let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     
     for file_idx in 0..10//array_of_paths.len()
     {
+        let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
+        
         //println!("{}", array_of_paths[83]);
         
         let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
@@ -411,48 +373,86 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // NOTE: Now we parse the sub sections.
         let mut specials = String::new();
         
-        let head     = clear_all_tags(mob_header);
-        let class    = clear_all_tags(race_class_info);
-        let misc     = clear_all_tags(misc_info);
-        let defense  = clear_all_tags(defense_block);
-        let attack   = clear_all_tags(attack_block);
-        let stats    = clear_all_tags(stats_block);
+        let head         = clear_all_tags(mob_header);
+        let class        = clear_all_tags(race_class_info);
+        let misc         = clear_all_tags(misc_info);
+        let defense      = clear_all_tags(defense_block);
+        let attack       = clear_all_tags(attack_block);
+        let stats        = clear_all_tags(stats_block);
         if !specials_block.is_empty() { specials = clear_all_tags(specials_block); }
-        let ecology  = clear_all_tags(ecology_block);
-        let desc     = clear_all_tags(desc_block);
-        let source   = clear_all_tags(source_block);
+        let ecology      = clear_all_tags(ecology_block);
+        let desc         = clear_all_tags(desc_block);
+        let mut source   = clear_all_tags(source_block);
         
         
-        let head_check     = ["GS", "PE"];
-        let head_arr   = fill_array_from_available(&head, &head_check);
+        let head_check    = ["GS", "PE:"];
+        let head_arr      = fill_array_from_available(&head, &head_check);
         
-        let class_check    = ["Allineamento:", "Categoria:"];
-        let class_arr  = fill_array_from_available(&class, &class_check);
+        //NOTETODO: What about origin?!??!?!?!?
+        let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
+        let mut class_arr = fill_array_from_available(&class, &class_check);
         
-        let misc_check     = ["Sensi:"];
-        let misc_arr   = fill_array_from_available(&misc, &misc_check);
+        //NOTE: Manually fix the category block
+        if class_arr[3].is_empty()
+        {
+            let (typ, next) = get_until(class_arr[4], " ");
+            let (size, _next) = get_until(next, "");
+            
+            class_arr[2] = typ.trim();
+            class_arr[4] = size.trim();
+        }
         
-        let defense_check  = ["PF:", "Tiri Salvezza:", "Immunità:", "Capacità Difensive:"];
-        let defense_arr    = fill_array_from_available(&defense, &defense_check);
+        let misc_check    = ["Sensi:"];
+        let mut misc_arr  = fill_array_from_available(&misc, &misc_check);
         
-        let attack_check   = ["Mischia:", "Distanza:", "Spazio:", "Portata:", 
+        //NOTE: Manually fix initiative
+        misc_arr[0] = misc_arr[0].get(12..).unwrap();
+        
+        
+        let defense_check   = ["PF:", "Tiri Salvezza:", "Immunità:", "Capacità Difensive:"];
+        let mut defense_arr = fill_array_from_available(&defense, &defense_check);
+        
+        //NOTE: Manually fix AC
+        defense_arr[0] = defense_arr[0].get(4..).unwrap();
+        
+        let attack_check   = ["Mischia:", "Distanza:", "Spazio:", "Portata:",
                               "Attacchi Speciali", "Magia Psichica", "Capacità Magiche", "Incantesimi" ];
-        let attack_arr = fill_array_from_available(&attack, &attack_check);
+        let mut attack_arr = fill_array_from_available(&attack, &attack_check);
         
-        let stats_check    = ["Bonus di Attacco Base:", "BMC:", "DMC:", "Talenti:", "Abilità:", 
-                              "Linguaggi:", "Modificatori Razziali:", "Qualità Speciali:" ];
-        let stats_arr  = fill_array_from_available(&stats, &stats_check);
+        //NOTE: Manually fix Speed
+        attack_arr[0] = attack_arr[0].get(11..).unwrap();
         
+        let stats_check   = ["Bonus di Attacco Base:", "BMC:", "DMC:", "Talenti:", "Abilità:",
+                             "Linguaggi:", "Modificatori Razziali:", "Qualità Speciali:" ];
+        let mut stats_arr = fill_array_from_available(&stats, &stats_check);
         
-        let ecology_check  = ["Organizzazione:", "Tesoro:"];
-        let ecology_arr    = fill_array_from_available(&ecology, &ecology_check);
+        //NOTE: Manually fix Stats
+        stats_arr[0] = stats_arr[0].get(17..).unwrap();
+        
+        let ecology_check   = ["Organizzazione:", "Tesoro:"];
+        let mut ecology_arr = fill_array_from_available(&ecology, &ecology_check);
+        
+        //NOTE: Manually fix Environment
+        ecology_arr[0] = ecology_arr[0].get(10..).unwrap();
+        
+        //NOTE: Manually fix source
+        source = source.get(7..).unwrap().to_string();
         
         
         //NOTE Start filling the buffers
         {
-            add_entry_to_buffer_if_missing(&mut name_buffer, head_arr[0].as_bytes(), head_arr[0].len());
-            add_entry_to_buffer_if_missing(&mut gs_buffer, head_arr[1].as_bytes(), head_arr[1].len());
-            add_entry_to_buffer_if_missing(&mut pe_buffer, head_arr[2].as_bytes(), head_arr[2].len());
+            let name_idx = add_entry_if_missing(&mut name_buffer, head_arr[0]);
+            let gs_idx   = add_entry_if_missing(&mut gs_buffer, head_arr[1]);
+            let pe_idx   = add_entry_if_missing(&mut pe_buffer, head_arr[2]);
+            
+            let short_desc_idx = add_entry(&mut mob_string_buffer, class_arr[0]);
+            let align_idx      = add_entry_if_missing(&mut alignment_buffer, class_arr[1]);
+            let type_idx       = add_entry_if_missing(&mut types_buffer, class_arr[2]);
+            let subtype_idx    = add_entry_if_missing(&mut subtypes_buffer, class_arr[3]);
+            let size_idx       = add_entry_if_missing(&mut sizes_buffer, class_arr[4]);
+            
+            let init_idx   = add_entry_if_missing(&mut name_buffer, head_arr[0].as_bytes(), head_arr[0].len());
+            let senses_idx = add_entry_if_missing(&mut gs_buffer, head_arr[1].as_bytes(), head_arr[1].len());
         }
         
         /*
@@ -468,23 +468,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         /*
         {
             
-            for v in head_arr    { println!("{}", v); }
-            for v in class_arr   { println!("{}", v); }
-            for v in misc_arr    { println!("{}", v); }
-            for v in defense_arr { println!("{}", v); }
-            for v in attack_arr  { println!("{}", v); }
-            for v in stats_arr   { println!("{}", v); }
+            for v in head_arr    { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
+            for v in class_arr   { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
+            for v in misc_arr    { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
+            for v in defense_arr { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
+            for v in attack_arr  { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
+            for v in stats_arr   { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
             
             if !specials.is_empty() { println!("{}", specials); } //NOTE: Specials is already what I want.
             
-            for v in ecology_arr { println!("{}", v); }
+            for v in ecology_arr { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
             
             println!("{}", desc);     //NOTE: Desc is already what I want.
             
             println!("{}", source);   //NOTE: Source is already what I want.
         }
         */
-        
     }
     
     let elapsed = now.elapsed();
