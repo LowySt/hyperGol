@@ -8,10 +8,7 @@ patterns =
 "*.4coder",
 };
 
-blacklist_patterns =
-{
-
-};
+blacklist_patterns = { };
 
 projCodePath = {".", .relative = true, .recursive = true};
 load_paths =

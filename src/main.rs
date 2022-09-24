@@ -2,6 +2,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
+use bytebuffer::ByteBuffer;
 
 static BLACKLIST: [&str; 57] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo"];
 
@@ -237,6 +238,39 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     return result_arr;
 }
 
+fn add_entry_to_buffer_if_missing(buf: &mut ByteBuffer, entry_data: &[u8], entry_len: usize)
+{
+    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
+    buf.set_rpos(4);
+    while buf.get_rpos() < buf.len()
+    {
+        let check_size = buf.read_u8();
+        let check_data = buf.read_bytes(check_size as usize);
+        
+        if entry_data == check_data { return; }
+    }
+    
+    //Bullshit bullshit bullshit
+    let mut converted_data: Vec<u8> = Vec::with_capacity(entry_len*4);
+    for i in 0..entry_len 
+    { 
+        converted_data.push(entry_data[i]);
+        converted_data.push(0);
+        converted_data.push(0);
+        converted_data.push(0);
+    }
+    
+    //NOTE we convert the string to u32 so we need the size to be 4 times larger
+    let entry_bytes = (entry_len*4);
+    buf.write_u8(entry_bytes as u8);
+    buf.write_bytes(converted_data.as_slice());
+    
+    let write_cursor = buf.get_wpos();
+    buf.set_wpos(0);
+    buf.write_u32((buf.len() - 4) as u32);
+    buf.set_wpos(write_cursor);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     use std::time::Instant;
@@ -283,7 +317,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     //let test_index = [1255, 1946, 2170, array_of_paths.len()-1];
     
-    for file_idx in 0..100//array_of_paths.len()
+    //sizeof+char_arr
+    let mut name_buffer           = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut gs_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut pe_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut senses_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut auras_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut immunities_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut resistances_buffer    = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut weaknesses_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut specialAttacks_buffer = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut spells_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut talents_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut terrains_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
+    
+    for file_idx in 0..10//array_of_paths.len()
     {
         //println!("{}", array_of_paths[83]);
         
@@ -298,7 +350,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
         
-        let begin_mob     = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
+        let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
         
         let offset_end = begin_mob.find("<!--").unwrap();
         let mob_page_tmp = begin_mob.get(..offset_end);
@@ -396,6 +448,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let ecology_arr    = fill_array_from_available(&ecology, &ecology_check);
         
         
+        //NOTE Start filling the buffers
+        {
+            add_entry_to_buffer_if_missing(&mut name_buffer, head_arr[0].as_bytes(), head_arr[0].len());
+            add_entry_to_buffer_if_missing(&mut gs_buffer, head_arr[1].as_bytes(), head_arr[1].len());
+            add_entry_to_buffer_if_missing(&mut pe_buffer, head_arr[2].as_bytes(), head_arr[2].len());
+        }
+        
+        /*
         let mut tmp_file = BufWriter::new(OpenOptions::new().append(true).create(true).open("result.txt").unwrap());
         
         tmp_file.write(file_idx.to_string().as_bytes())?;
@@ -403,6 +463,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for v in head_arr { tmp_file.write(v.as_bytes())?; }
         tmp_file.write("\n".as_bytes())?;
         tmp_file.flush()?;
+        */
         
         /*
         {
