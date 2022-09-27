@@ -145,7 +145,12 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     
     let (last, _) = get_until(next, "");
     if missed_i == 99 { result_arr.push(last.trim()); }
-    else              { result_arr.insert(missed_i, last.trim()); }
+    else
+    { 
+        result_arr.insert(missed_i, last.trim());
+        let unfilled_values = until.len() - missed_i;
+        for i in 0..unfilled_values { result_arr.push(GLOBAL_NULL); } //TODO: Check?
+    }
     
     return result_arr;
 }
@@ -273,34 +278,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let client = reqwest::blocking::Client::new();
     
-	let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
+    let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
     
-	let offset  = body.find("wiki_table_filter").unwrap();
-	let slice_1 = body.get((offset - 11)..).unwrap();
-	
-	let offset_end = slice_1.find("</table>").unwrap();
-	let slice_of_page = slice_1.get(..(offset_end+8));
+    let offset  = body.find("wiki_table_filter").unwrap();
+    let slice_1 = body.get((offset - 11)..).unwrap();
     
-	//println!("{}", slice_of_page.unwrap());
+    let offset_end = slice_1.find("</table>").unwrap();
+    let slice_of_page = slice_1.get(..(offset_end+8));
     
-	let base_url = "https://golarion.altervista.org";
-	let mut array_of_paths = vec![];
+    //println!("{}", slice_of_page.unwrap());
     
-	let mut next_slice_index = slice_of_page.unwrap().find("href=");
-	let mut next_slice = slice_of_page;
-	while next_slice_index.is_some() && next_slice.is_some()
-	{
-		next_slice = next_slice.unwrap().get((next_slice_index.unwrap() + 1)..);
-		if next_slice.is_none() { println!("[ERROR]"); return Ok(()); }
+    let base_url = "https://golarion.altervista.org";
+    let mut array_of_paths = vec![];
+    
+    let mut next_slice_index = slice_of_page.unwrap().find("href=");
+    let mut next_slice = slice_of_page;
+    while next_slice_index.is_some() && next_slice.is_some()
+    {
+        next_slice = next_slice.unwrap().get((next_slice_index.unwrap() + 1)..);
+        if next_slice.is_none() { println!("[ERROR]"); return Ok(()); }
         
-		let page_path   = get_path_from_slice(next_slice.unwrap());
-		if page_path.is_some() {
-			let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
-			array_of_paths.push(s_to_push);
-		}
+        let page_path   = get_path_from_slice(next_slice.unwrap());
+        if page_path.is_some() {
+            let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
+            array_of_paths.push(s_to_push);
+        }
         
-		next_slice_index = next_slice.unwrap().find("href=");
-	}
+        next_slice_index = next_slice.unwrap().find("href=");
+    }
     
     /*
         for p in array_of_paths
@@ -333,9 +338,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     
-    //for file_idx in 1335..1336
-    for file_idx in 0..array_of_paths.len()
+    for file_idx in 21..22
+        //for file_idx in 0..array_of_paths.len()
     {
+        //println!("IDX: {}", file_idx);
+        
         let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
         
         let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
@@ -443,7 +450,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //NOTE: Manually fix the category block
         if class_arr[3].is_empty()
         {
-            let (typ, next) = get_until(class_arr[2], " ");
+            let (typ, next) = get_until(class_arr[2], " "); //TODO This is not good. Non Morto/Bestia Magica....
             let (size, _next) = get_until(next, "");
             
             class_arr[2] = typ.trim();
@@ -477,6 +484,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             subtypes_count = flatten_str_list(&mut class_arr, 3+arch_count, ", ");
         }
         
+        for v in &class_arr { println!("{}", v); }
         
         //NOTE We differentiate all senses, and from perception we only keep the value
         let misc_check    = ["Sensi:", "Percezione "];
@@ -495,29 +503,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         let defense_check   = ["PF: ", "Tiri Salvezza: ", "RD: ", "RI: ", "Immunità: ", 
-                               "Resistenza: ", "Capacità Difensive: ", "Debolezze: "];
+                               "Resistenze: ", "Capacità Difensive: ", "Debolezze: "];
         let mut defense_arr = fill_array_from_available(&defense, &defense_check);
-        
-        //TODO Separate immunities, resistances and weaknesses!!!
         
         let mut immunities_count = 0;
         if !defense_arr[5].is_empty()
         {
             immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
         }
-        /*
+        
         let mut resitances_count = 0;
-        if !defense_arr[5].is_empty()
+        let resistance_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
+        if !defense_arr[6+resistance_offset].is_empty()
         {
-            immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+            resitances_count = flatten_str_list(&mut defense_arr, 6+resistance_offset, ", ");
         }
         
-        let mut weaknesses_count = 0;
-        if !defense_arr[5].is_empty()
+        let mut weakness_count = 0;
+        let weak_offset = if weakness_count > 0 { (weakness_count - 1) + resistance_offset } else { resistance_offset };
+        if !defense_arr[8+weak_offset].is_empty()
         {
-            immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+            weakness_count = flatten_str_list(&mut defense_arr, 8+weak_offset, ", ");
         }
-        */
+        
+        
         //NOTE: Manually fix AC
         defense_arr[0] = defense_arr[0].get(4..).unwrap();
         
