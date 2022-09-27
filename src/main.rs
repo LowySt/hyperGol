@@ -1,10 +1,12 @@
+#![allow(warnings, unused)]
+
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
 use bytebuffer::ByteBuffer;
 
-static BLACKLIST: [&str; 57] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo"];
+static BLACKLIST: [&str; 58] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri"];
 
 fn check_path_against_blacklist(p: &str) -> bool {
 	for v in BLACKLIST {
@@ -42,7 +44,7 @@ fn clear_all_tags(data_slice: &str) -> String {
 	loop
 	{
 		let begin = result.find("<");
-		if begin.is_none() { return result.replace("&#160;", " ");; }
+		if begin.is_none() { return result.replace("&#160;", " "); }
         
 		let end = result.find(">");
 		if end.is_none() { println!("[ERROR] Malformed html?"); return "".to_string(); }
@@ -118,7 +120,7 @@ fn get_until<'a>(data_slice: &'a str, until: &str) -> (&'a str, &'a str)
     let next = data_slice.get(end_idx+tag_len..);
     if next.is_none() { println!("[ERROR] Malformed mob page\n"); panic!(); }
     
-    return (result.unwrap().trim(), next.unwrap());
+    return (result.unwrap(), next.unwrap());
 }
 
 fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
@@ -137,13 +139,13 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
         
         if el == GLOBAL_NULL && missed_i == 99 { missed_i = i; }
         
-        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el); }
-        else                                   { result_arr.insert(missed_i, el); missed_i = 99; }
+        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el.trim()); }
+        else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
     }
     
     let (last, _) = get_until(next, "");
-    if missed_i == 99 { result_arr.push(last); }
-    else              { result_arr.insert(missed_i, last); }
+    if missed_i == 99 { result_arr.push(last.trim()); }
+    else              { result_arr.insert(missed_i, last.trim()); }
     
     return result_arr;
 }
@@ -171,7 +173,7 @@ fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     cursor = buf.get_wpos();
     
     //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = (entry_len*4);
+    let entry_bytes = entry_len*4;
     buf.write_u8(entry_bytes as u8);
     buf.write_bytes(converted_data.as_slice());
     
@@ -217,7 +219,7 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     cursor = buf.get_wpos();
     
     //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = (entry_len*4);
+    let entry_bytes = entry_len*4;
     buf.write_u8(entry_bytes as u8);
     buf.write_bytes(converted_data.as_slice());
     
@@ -227,6 +229,41 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     buf.set_wpos(write_cursor);
     
     return cursor as u16;
+}
+
+fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> usize
+{
+    let mut number_of_inserts = 0;
+    let mut base = orig_arr.remove(list_idx);
+    let mut idx = list_idx;
+    loop
+    {
+        let (new_el, next) = get_until(&base, delim);
+        base = next;
+        
+        if new_el == GLOBAL_NULL { break; }
+        orig_arr.insert(idx, new_el);
+        number_of_inserts += 1;
+        idx += 1;
+    }
+    
+    let (last_el, _next) = get_until(&base, "");
+    orig_arr.insert(idx, last_el);
+    number_of_inserts += 1;
+    
+    return number_of_inserts;
+}
+
+macro_rules! check_unwrap
+{
+    ($val:expr, $file_idx:expr, $name:expr) =>
+    {
+        {
+            if $val.is_none() { println!("IDX: {}, name: {}", $file_idx, $name); panic!(); }
+            let res = $val.unwrap();
+            res
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -296,11 +333,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     
-    for file_idx in 13..14//array_of_paths.len()
+    //for file_idx in 1335..1336
+    for file_idx in 0..array_of_paths.len()
     {
         let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
-        
-        //println!("{}", array_of_paths[83]);
         
         let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
         
@@ -325,7 +361,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut tmp_file = File::create("mob.html")?;
         tmp_file.write_all(mob_page.as_bytes())?;
         
-        
         //NOTE: Let's try extracting entire tag blocks to parse the mob data
         let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>".to_string(), "</h1>".to_string());
         mob_page = next;
@@ -333,7 +368,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (race_class_info_pre, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">".to_string(), "</div>".to_string());
         mob_page = next;
         
-        let (origin, race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
+        let (origin_info, race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
         
         
         let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
@@ -369,7 +404,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mob_page = next;
         
         mob_page = skip_to(mob_page, "id=\"Descrizione\"");
-        let (desc_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<hr />".to_string());
+        let (desc_block, next) = get_slice_inside_tags(mob_page, "</h2>".to_string(), "<hr />".to_string());
         mob_page = next;
         
         let (source_block, _) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
@@ -378,6 +413,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut specials = String::new();
         
         let head         = clear_all_tags(mob_header);
+        let mut origin   = clear_all_tags(origin_info);
         let class        = clear_all_tags(race_class_info);
         let misc         = clear_all_tags(misc_info);
         let defense      = clear_all_tags(defense_block);
@@ -385,76 +421,78 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let stats        = clear_all_tags(stats_block);
         if !specials_block.is_empty() { specials = clear_all_tags(specials_block); }
         let ecology      = clear_all_tags(ecology_block);
-        let desc         = clear_all_tags(desc_block);
+        let mut desc     = clear_all_tags(desc_block);
         let mut source   = clear_all_tags(source_block);
         
+        if !origin.is_empty() { origin = origin.trim().to_string(); }
+        if !desc.is_empty()   { desc = desc.trim().to_string(); }
         
         let head_check    = ["GS", "PE:"];
         let head_arr      = fill_array_from_available(&head, &head_check);
         
-        //NOTETODO: We are missing archetypes!! They are between square brackets [ .. ] 
-        //          Example: https://golarion.altervista.org/wiki/Ginosfinge_Mummificata
+        //TODO: Fix all Licanthropes/Entothropes having 2 pages in the same entry.
+        //NOTE: Just helping golarion out. If missing shit, I'm gonna report it to fix it.
+        if desc.is_empty() { println!("IDX: {}, Name: {}", file_idx, head_arr[0]); }
+        
         let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
         let mut class_arr = fill_array_from_available(&class, &class_check);
         
-        let mut number_of_subtypes = 0;
+        let mut subtypes_count = 0;
+        let mut arch_count     = 0;
+        
         //NOTE: Manually fix the category block
         if class_arr[3].is_empty()
         {
-            let (typ, next) = get_until(class_arr[4], " ");
+            let (typ, next) = get_until(class_arr[2], " ");
             let (size, _next) = get_until(next, "");
             
-            
             class_arr[2] = typ.trim();
-            class_arr[4] = size.trim();
-        }
-        else
-        {
-            let mut base_subtypes = class_arr.remove(3);
-            let mut sub_idx = 1;
-            loop
+            class_arr.push(size.trim()); //NOTE: To put it in index 5.
+            
+            if class_arr[5].is_empty() { println!("Maybe error? Arch+Size is missing. How can size be missing?"); }
+            
+            let arch_end_idx = class_arr[5].find(']');
+            if arch_end_idx.is_some()
             {
-                let (new_sub, next) = get_until(&base_subtypes, ", ");
-                base_subtypes = next;
-                if new_sub == GLOBAL_NULL { break; }
-                class_arr.insert(sub_idx, new_sub);
-                number_of_subtypes += 1;
-                sub_idx += 1;
+                let arch = class_arr[5].get(1..arch_end_idx.unwrap()).unwrap();
+                class_arr[5] = class_arr[5].get(arch_end_idx.unwrap()+1..).unwrap();
+                
+                arch_count = flatten_str_list(&mut class_arr, 4, ", ");
+            }
+        }
+        else 
+        {
+            let arch_end_idx = class_arr[4].find(']');
+            if arch_end_idx.is_some()
+            {
+                let arch = class_arr[4].get(1..arch_end_idx.unwrap()).unwrap();
+                let size = class_arr[4].get(arch_end_idx.unwrap()+1..).unwrap().trim();
+                class_arr[4] = arch;
+                
+                class_arr.push(size);
+                
+                arch_count = flatten_str_list(&mut class_arr, 4, ", ");
             }
             
-            let (last_sub, _next) = get_until(&base_subtypes, "");
-            class_arr.insert(sub_idx, last_sub);
-            number_of_subtypes += 1;
+            subtypes_count = flatten_str_list(&mut class_arr, 3+arch_count, ", ");
         }
         
+        
         //NOTE We differentiate all senses, and from perception we only keep the value
-        let misc_check    = ["Sensi: ", "; "];
+        let misc_check    = ["Sensi:", "Percezione "];
         let mut misc_arr  = fill_array_from_available(&misc, &misc_check);
         
         //NOTE: Manually fix all misc
-        misc_arr[0] = misc_arr[0].get(12..).unwrap();
-        misc_arr[2] = misc_arr[2].get(11..).unwrap();
+        let golarion_grammar_mistake = misc_arr[1].find(";"); //NOTE: Fucking golarion has grammar mistakes.
+        if golarion_grammar_mistake.is_some() { misc_arr[1] = misc_arr[1].get(..misc_arr[1].len()-1).unwrap(); }
         
-        let mut number_of_senses = 0;
-        if !misc_arr[1].is_empty()
-        {
-            let mut base_senses = misc_arr.remove(1);
-            let mut sense_idx = 1;
-            loop
-            {
-                let (new_sense, next) = get_until(&base_senses, ", ");
-                base_senses = next;
-                if new_sense == GLOBAL_NULL { break; }
-                misc_arr.insert(sense_idx, new_sense);
-                number_of_senses += 1;
-                sense_idx += 1;
-            }
-            
-            let (last_sense, _next) = get_until(&base_senses, "");
-            misc_arr.insert(sense_idx, last_sense);
-            number_of_senses += 1;
+        misc_arr[0] = check_unwrap!(misc_arr[0].get(12..), file_idx, head_arr[0]);
+        
+        let mut senses_count = 0;
+        if !misc_arr[1].is_empty() 
+        { 
+            senses_count = flatten_str_list(&mut misc_arr, 1, ", ");
         }
-        
         
         let defense_check   = ["PF: ", "Tiri Salvezza: ", "RD: ", "RI: ", "Immunità: ", 
                                "Resistenza: ", "Capacità Difensive: ", "Debolezze: "];
@@ -462,9 +500,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         //TODO Separate immunities, resistances and weaknesses!!!
         
+        let mut immunities_count = 0;
+        if !defense_arr[5].is_empty()
+        {
+            immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+        }
+        /*
+        let mut resitances_count = 0;
+        if !defense_arr[5].is_empty()
+        {
+            immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+        }
+        
+        let mut weaknesses_count = 0;
+        if !defense_arr[5].is_empty()
+        {
+            immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+        }
+        */
         //NOTE: Manually fix AC
         defense_arr[0] = defense_arr[0].get(4..).unwrap();
         
+        //TODO Extract LI and Concentration??? Or just print them randomly?
         let attack_check   = ["Mischia:", "Distanza:", "Spazio:", "Portata:",
                               "Attacchi Speciali", "Magia Psichica", "Capacità Magiche", "Incantesimi" ];
         let mut attack_arr = fill_array_from_available(&attack, &attack_check);
@@ -483,11 +540,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut ecology_arr = fill_array_from_available(&ecology, &ecology_check);
         
         //NOTE: Manually fix Environment
-        ecology_arr[0] = ecology_arr[0].get(10..).unwrap();
+        //TODO: Check if there's a sneaky space before the enviroment tag
+        //ecology_arr[0] = ecology_arr[0].get(10..).unwrap();
+        ecology_arr[0] = check_unwrap!(ecology_arr[0].get(9..), file_idx, head_arr[0]);
         
         //NOTE: Manually fix source
-        source = source.get(7..).unwrap().to_string();
-        
+        source = check_unwrap!(source.get(7..), file_idx, head_arr[0]).to_string();
         
         /*
         //NOTE Start filling the buffers
@@ -496,38 +554,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let gs_idx   = add_entry_if_missing(&mut gs_buffer, head_arr[1]);
             let pe_idx   = add_entry_if_missing(&mut pe_buffer, head_arr[2]);
             
-let origin_idx     = add_entry(&mut mob_string_buffer, origin);
+            let origin_idx     = add_entry(&mut mob_string_buffer, origin);
             let short_desc_idx = add_entry(&mut mob_string_buffer, class_arr[0]);
             let align_idx      = add_entry_if_missing(&mut alignment_buffer, class_arr[1]);
             let type_idx       = add_entry_if_missing(&mut types_buffer, class_arr[2]);
-
-let subtypes_idx: [0u16; 4];
-for s in 0..number_of_subtypes
-{ subtypes_idx[s]  = add_entry_if_missing(&mut subtypes_buffer, class_arr[3+s]); }
-let size_idx       = add_entry_if_missing(&mut sizes_buffer, class_arr[4+number_of_subtypes]);
-
-let init_idx       = add_entry_if_missing(&mut number_buffer, misc_arr[0]);
-
-let senses_idx: [0u16; 8];
-for s in 0..number_of_senses
-{ senses_idx[s]    = add_entry_if_missing(&mut senses_buffer, misc_arr[1+s]); }
-let perception_idx = add_entry_if_missing(&mut number_buffer, misc_arr[2+number_of_senses]);
-
-let ac_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[0]); }
-let pf_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[1]); }
-let st_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[2]); }
-let rd_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[3]); }
-let ri_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[4]); }
-
-//TODO List
-let immunities_idx    = add_entry_if_missing(&mut immunities_buffer, defense_arr[5]); }
-let resistances_idx   = add_entry_if_missing(&mut resistances_buffer, defense_arr[6]); }
-
-let defensive_cap_idx = add_entry_if_missing(&mut mob_string_buffer, defense_arr[7]); }
-
-//TODO List
-let weaknesses_idx    = add_entry_if_missing(&mut weaknesses_buffer, defense_arr[8]); }
-
+            
+            let subtypes_idx: [0u16; 4];
+            for s in 0..number_of_subtypes
+            { subtypes_idx[s]  = add_entry_if_missing(&mut subtypes_buffer, class_arr[3+s]); }
+            let size_idx       = add_entry_if_missing(&mut sizes_buffer, class_arr[4+number_of_subtypes]);
+            
+            let init_idx       = add_entry_if_missing(&mut number_buffer, misc_arr[0]);
+            
+            let senses_idx: [0u16; 8];
+            for s in 0..number_of_senses
+            { senses_idx[s]    = add_entry_if_missing(&mut senses_buffer, misc_arr[1+s]); }
+            let perception_idx = add_entry_if_missing(&mut number_buffer, misc_arr[2+number_of_senses]);
+            
+            let ac_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[0]);
+            let pf_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[1]);
+            let st_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[2]);
+            let rd_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[3]);
+            let ri_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[4]);
+            
+            //TODO List
+            let immunities_idx    = add_entry_if_missing(&mut immunities_buffer, defense_arr[5+]);
+            let resistances_idx   = add_entry_if_missing(&mut resistances_buffer, defense_arr[6+]);
+            
+            let defensive_cap_idx = add_entry_if_missing(&mut mob_string_buffer, defense_arr[7+]);
+            
+            //TODO List
+            let weaknesses_idx    = add_entry_if_missing(&mut weaknesses_buffer, defense_arr[8+]);
+            
         }
         */
         
@@ -541,8 +599,9 @@ let weaknesses_idx    = add_entry_if_missing(&mut weaknesses_buffer, defense_arr
         tmp_file.flush()?;
         */
         
-        
+        if head_arr[0] == "Kitsune"
         {
+            println!("IDX: {}", file_idx);
             
             for v in head_arr    { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
             
@@ -558,9 +617,11 @@ let weaknesses_idx    = add_entry_if_missing(&mut weaknesses_buffer, defense_arr
             
             for v in ecology_arr { if v.is_empty() { println!("Was empty"); continue; } println!("{}", v); }
             
-            println!("{}", desc);     //NOTE: Desc is already what I want.
+            if desc.is_empty() { println!("Was empty"); } else { println!("{}", desc); }    //NOTE: Desc is already what I want.
             
             println!("{}", source);   //NOTE: Source is already what I want.
+            
+            panic!();
         }
         
     }
