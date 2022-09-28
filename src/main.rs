@@ -450,21 +450,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //NOTE: Manually fix the category block
         if class_arr[3].is_empty()
         {
-            let (typ, next) = get_until(class_arr[2], " "); //TODO This is not good. Non Morto/Bestia Magica....
-            let (size, _next) = get_until(next, "");
             
-            class_arr[2] = typ.trim();
-            class_arr.push(size.trim()); //NOTE: To put it in index 5.
+            let size_idx = class_arr[2].rfind(" ");
+            if size_idx.is_none() { println!("Maybe error? size_idx is missing. How can it be missing?"); panic!(); }
             
-            if class_arr[5].is_empty() { println!("Maybe error? Arch+Size is missing. How can size be missing?"); }
+            let size = class_arr[2].get(size_idx.unwrap()..);
+            if size.is_none() { println!("How can I not get size??"); panic!(); }
             
-            let arch_end_idx = class_arr[5].find(']');
-            if arch_end_idx.is_some()
+            class_arr.push(size.unwrap().trim()); //NOTE: To put it in index 5
+            let type_plus_arch = class_arr[2].get(..size_idx.unwrap()).unwrap();
+            
+            let arch_begin_idx = type_plus_arch.find('[');
+            let arch_end_idx = type_plus_arch.find(']');
+            
+            if arch_end_idx.is_some() && arch_begin_idx.is_some()
             {
-                let arch = class_arr[5].get(1..arch_end_idx.unwrap()).unwrap();
-                class_arr[5] = class_arr[5].get(arch_end_idx.unwrap()+1..).unwrap();
-                
+                let arch = type_plus_arch.get(arch_begin_idx.unwrap()..arch_end_idx.unwrap()).unwrap();
+                class_arr[2] = type_plus_arch.get(..arch_begin_idx.unwrap()).unwrap().trim();
+                class_arr[4] = arch.trim();
                 arch_count = flatten_str_list(&mut class_arr, 4, ", ");
+            }
+            else
+            {
+                class_arr[2] = type_plus_arch.trim();
             }
         }
         else 
