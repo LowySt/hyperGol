@@ -148,7 +148,7 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     else
     { 
         result_arr.insert(missed_i, last.trim());
-        let unfilled_values = until.len() - missed_i;
+        let unfilled_values = (until.len()-1 - missed_i);
         for i in 0..unfilled_values { result_arr.push(GLOBAL_NULL); } //TODO: Check?
     }
     
@@ -338,10 +338,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     
-    for file_idx in 21..22
-        //for file_idx in 0..array_of_paths.len()
+    //for file_idx in 120..130
+    for file_idx in 0..array_of_paths.len()
     {
-        //println!("IDX: {}", file_idx);
+        println!("IDX: {}", file_idx);
         
         let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
         
@@ -457,7 +457,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let size = class_arr[2].get(size_idx.unwrap()..);
             if size.is_none() { println!("How can I not get size??"); panic!(); }
             
-            class_arr.push(size.unwrap().trim()); //NOTE: To put it in index 5
+            class_arr[5] = size.unwrap().trim();
             let type_plus_arch = class_arr[2].get(..size_idx.unwrap()).unwrap();
             
             let arch_begin_idx = type_plus_arch.find('[');
@@ -491,8 +491,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             
             subtypes_count = flatten_str_list(&mut class_arr, 3+arch_count, ", ");
         }
-        
-        for v in &class_arr { println!("{}", v); }
         
         //NOTE We differentiate all senses, and from perception we only keep the value
         let misc_check    = ["Sensi:", "Percezione "];
