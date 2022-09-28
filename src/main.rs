@@ -6,7 +6,7 @@ use std::io::BufWriter;
 use std::io::prelude::*;
 use bytebuffer::ByteBuffer;
 
-static BLACKLIST: [&str; 58] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri"];
+static BLACKLIST: [&str; 63] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium"];
 
 fn check_path_against_blacklist(p: &str) -> bool {
 	for v in BLACKLIST {
@@ -143,13 +143,13 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
         else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
     }
     
+    //TODO: For some reason there's an extra empty push in attack_arr...
     let (last, _) = get_until(next, "");
     if missed_i == 99 { result_arr.push(last.trim()); }
     else
     { 
         result_arr.insert(missed_i, last.trim());
-        let unfilled_values = (until.len()-1 - missed_i);
-        for i in 0..unfilled_values { result_arr.push(GLOBAL_NULL); } //TODO: Check?
+        result_arr.push(GLOBAL_NULL); //Push the last missed element.
     }
     
     return result_arr;
@@ -163,7 +163,7 @@ fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     let mut cursor: usize = 0;
     
     //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return cursor as u16; }
+    if entry_len == 0 { return 0u16; }
     
     //Bullshit bullshit bullshit
     let mut converted_data: Vec<u8> = Vec::with_capacity(entry_len*4);
@@ -198,7 +198,7 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     let mut cursor: usize = 0;
     
     //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return cursor as u16; }
+    if entry_len == 0 { return 0u16; }
     
     //NOTE: The first 4 bytes of the buffer represent the total length in bytes
     buf.set_rpos(4);
@@ -325,6 +325,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut alignment_buffer      = ByteBuffer::from_bytes(&[0u8;64]);
     let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
     let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut archetypes_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sizes_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
     let mut senses_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
     let mut auras_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
@@ -334,14 +335,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut special_attack_buffer = ByteBuffer::from_bytes(&[0u8;64]);
     let mut spells_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
     let mut talents_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut terrains_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut climates_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut skills_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut languages_buffer      = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut environment_buffer    = ByteBuffer::from_bytes(&[0u8;64]);
     let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
     
-    //for file_idx in 120..130
+    //for file_idx in 292..293
     for file_idx in 0..array_of_paths.len()
     {
-        println!("IDX: {}", file_idx);
+        println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]);
         
         let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
         
@@ -444,13 +446,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
         let mut class_arr = fill_array_from_available(&class, &class_check);
         
+        //NOTE: Manually fix the category block
         let mut subtypes_count = 0;
         let mut arch_count     = 0;
-        
-        //NOTE: Manually fix the category block
         if class_arr[3].is_empty()
         {
-            
             let size_idx = class_arr[2].rfind(" ");
             if size_idx.is_none() { println!("Maybe error? size_idx is missing. How can it be missing?"); panic!(); }
             
@@ -488,9 +488,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 
                 arch_count = flatten_str_list(&mut class_arr, 4, ", ");
             }
+            else { class_arr.insert(4, GLOBAL_NULL); } //NOTE: We need to preserve the empty spot of the arch
             
-            subtypes_count = flatten_str_list(&mut class_arr, 3+arch_count, ", ");
+            subtypes_count = flatten_str_list(&mut class_arr, 3, ", ");
         }
+        
+        let subtypes_off = if subtypes_count > 0 { subtypes_count - 1 } else { 0 };
+        let arch_off     = if arch_count > 0  { (arch_count - 1) + subtypes_off } else { subtypes_off };
         
         //NOTE We differentiate all senses, and from perception we only keep the value
         let misc_check    = ["Sensi:", "Percezione "];
@@ -518,27 +522,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
         }
         
-        let mut resitances_count = 0;
-        let resistance_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
-        if !defense_arr[6+resistance_offset].is_empty()
+        let mut res_count = 0;
+        let res_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
+        if !defense_arr[6+res_offset].is_empty()
         {
-            resitances_count = flatten_str_list(&mut defense_arr, 6+resistance_offset, ", ");
+            res_count = flatten_str_list(&mut defense_arr, 6+res_offset, ", ");
         }
         
-        let mut weakness_count = 0;
-        let weak_offset = if weakness_count > 0 { (weakness_count - 1) + resistance_offset } else { resistance_offset };
+        let mut weak_count = 0;
+        let weak_offset = if res_count > 0 { (res_count - 1) + res_offset } else { res_offset };
         if !defense_arr[8+weak_offset].is_empty()
         {
-            weakness_count = flatten_str_list(&mut defense_arr, 8+weak_offset, ", ");
+            weak_count = flatten_str_list(&mut defense_arr, 8+weak_offset, ", ");
         }
-        
         
         //NOTE: Manually fix AC
         defense_arr[0] = defense_arr[0].get(4..).unwrap();
         
-        //TODO Extract LI and Concentration??? Or just print them randomly?
-        let attack_check   = ["Mischia:", "Distanza:", "Spazio:", "Portata:",
-                              "Attacchi Speciali", "Magia Psichica", "Capacità Magiche", "Incantesimi" ];
+        //TODO Maybe further parsing to compress and better separate the spell strings?
+        let attack_check   = ["Mischia:", "Distanza:", "Attacchi Speciali:", "Spazio:", "Portata:",
+                              "Magia Psichica:", "Capacità Magiche:", "Incantesimi:" ];
         let mut attack_arr = fill_array_from_available(&attack, &attack_check);
         
         //NOTE: Manually fix Speed
@@ -551,58 +554,166 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //NOTE: Manually fix Stats
         stats_arr[0] = stats_arr[0].get(17..).unwrap();
         
+        let mut talent_count = 0;
+        if !stats_arr[4].is_empty()
+        {
+            talent_count = flatten_str_list(&mut stats_arr, 4, ", ");
+        }
+        
+        let mut skill_count = 0;
+        let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
+        if !stats_arr[5+skill_off].is_empty()
+        {
+            //TODO Separate type from value and store them in 2 different buffers
+            skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        }
+        
+        let mut lang_count = 0;
+        let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
+        if !stats_arr[6+lang_off].is_empty()
+        {
+            lang_count = flatten_str_list(&mut stats_arr, 6+lang_off, ", ");
+        }
+        
+        //NOTE: At the end, to keep indices correct, we unwrap all stats
+        {
+            let must_be_six = flatten_str_list(&mut stats_arr, 0, ", ");
+            assert!(must_be_six == 6);
+            
+            stats_arr[0] = stats_arr[0].get(5..).unwrap().trim();
+            stats_arr[1] = stats_arr[1].get(9..).unwrap().trim();
+            stats_arr[2] = stats_arr[2].get(12..).unwrap().trim();
+            stats_arr[3] = stats_arr[3].get(12..).unwrap().trim();
+            stats_arr[4] = stats_arr[4].get(8..).unwrap().trim();
+            stats_arr[5] = stats_arr[5].get(7..).unwrap().trim();
+        }
+        
+        //TODO: Separate each special ability/quality whatever they are called to deduplicate
+        
         let ecology_check   = ["Organizzazione:", "Tesoro:"];
         let mut ecology_arr = fill_array_from_available(&ecology, &ecology_check);
         
         //NOTE: Manually fix Environment
-        //TODO: Check if there's a sneaky space before the enviroment tag
-        //ecology_arr[0] = ecology_arr[0].get(10..).unwrap();
-        ecology_arr[0] = check_unwrap!(ecology_arr[0].get(9..), file_idx, head_arr[0]);
+        ecology_arr[0] = check_unwrap!(ecology_arr[0].get(9..), file_idx, head_arr[0]).trim();
         
         //NOTE: Manually fix source
         source = check_unwrap!(source.get(7..), file_idx, head_arr[0]).to_string();
         
-        /*
+        
+        
         //NOTE Start filling the buffers
         {
+            //Header
             let name_idx = add_entry_if_missing(&mut name_buffer, head_arr[0]);
             let gs_idx   = add_entry_if_missing(&mut gs_buffer, head_arr[1]);
             let pe_idx   = add_entry_if_missing(&mut pe_buffer, head_arr[2]);
             
-            let origin_idx     = add_entry(&mut mob_string_buffer, origin);
+            //Class Info
+            let mut subtypes_idx = [0u16; 4];
+            let mut arch_idx     = [0u16; 4];
+            
+            let origin_idx     = add_entry(&mut mob_string_buffer, &origin);
             let short_desc_idx = add_entry(&mut mob_string_buffer, class_arr[0]);
             let align_idx      = add_entry_if_missing(&mut alignment_buffer, class_arr[1]);
             let type_idx       = add_entry_if_missing(&mut types_buffer, class_arr[2]);
             
-            let subtypes_idx: [0u16; 4];
-            for s in 0..number_of_subtypes
+            for s in 0..subtypes_count
             { subtypes_idx[s]  = add_entry_if_missing(&mut subtypes_buffer, class_arr[3+s]); }
-            let size_idx       = add_entry_if_missing(&mut sizes_buffer, class_arr[4+number_of_subtypes]);
+            
+            for arch in 0..arch_count
+            { arch_idx[arch]   = add_entry_if_missing(&mut archetypes_buffer, class_arr[4+subtypes_off+arch]); }
+            
+            let size_idx       = add_entry_if_missing(&mut sizes_buffer, class_arr[5+arch_off]);
+            
+            //Misc
+            let mut senses_idx = [0u16; 8];
             
             let init_idx       = add_entry_if_missing(&mut number_buffer, misc_arr[0]);
             
-            let senses_idx: [0u16; 8];
-            for s in 0..number_of_senses
+            for s in 0..senses_count
             { senses_idx[s]    = add_entry_if_missing(&mut senses_buffer, misc_arr[1+s]); }
-            let perception_idx = add_entry_if_missing(&mut number_buffer, misc_arr[2+number_of_senses]);
             
-            let ac_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[0]);
-            let pf_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[1]);
-            let st_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[2]);
-            let rd_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[3]);
-            let ri_idx            = add_entry_if_missing(&mut mob_string_buffer, defense_arr[4]);
+            let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
+            let perception_idx = add_entry_if_missing(&mut number_buffer, misc_arr[2+senses_off]);
             
-            //TODO List
-            let immunities_idx    = add_entry_if_missing(&mut immunities_buffer, defense_arr[5+]);
-            let resistances_idx   = add_entry_if_missing(&mut resistances_buffer, defense_arr[6+]);
+            //Defense
+            let mut immunities_idx  = [0u16; 8];
+            let mut resistances_idx = [0u16; 8];
+            let mut weaknesses_idx  = [0u16; 8];
             
-            let defensive_cap_idx = add_entry_if_missing(&mut mob_string_buffer, defense_arr[7+]);
+            let ac_idx            = add_entry(&mut mob_string_buffer, defense_arr[0]);
+            let pf_idx            = add_entry(&mut mob_string_buffer, defense_arr[1]);
+            let st_idx            = add_entry(&mut mob_string_buffer, defense_arr[2]);
+            let rd_idx            = add_entry(&mut mob_string_buffer, defense_arr[3]);
+            let ri_idx            = add_entry(&mut mob_string_buffer, defense_arr[4]);
             
-            //TODO List
-            let weaknesses_idx    = add_entry_if_missing(&mut weaknesses_buffer, defense_arr[8+]);
+            for i in 0..immunities_count
+            { immunities_idx[i]   = add_entry_if_missing(&mut immunities_buffer, defense_arr[5+i]); }
             
+            for r in 0..res_count
+            { resistances_idx[r]  = add_entry_if_missing(&mut resistances_buffer, defense_arr[6+res_offset+r]); }
+            
+            let def_cap_off = 7 + weak_offset;
+            let defensive_cap_idx = add_entry(&mut mob_string_buffer, defense_arr[def_cap_off]);
+            
+            for w in 0..weak_count
+            { weaknesses_idx[w]   = add_entry_if_missing(&mut weaknesses_buffer, defense_arr[8+weak_offset+w]); }
+            
+            //Attack
+            let speed_idx    = add_entry_if_missing(&mut number_buffer, attack_arr[0]);
+            let melee_idx    = add_entry(&mut mob_string_buffer, attack_arr[1]);
+            let ranged_idx   = add_entry(&mut mob_string_buffer, attack_arr[2]);
+            let specials_idx = add_entry(&mut mob_string_buffer, attack_arr[3]);
+            let space_idx    = add_entry_if_missing(&mut number_buffer, attack_arr[4]);
+            let reach_idx    = add_entry_if_missing(&mut number_buffer, attack_arr[5]);
+            let psych_idx    = add_entry(&mut mob_string_buffer, attack_arr[6]);
+            let magics_idx   = add_entry(&mut mob_string_buffer, attack_arr[7]);
+            let spells_idx   = add_entry(&mut mob_string_buffer, attack_arr[8]);
+            
+            //Stats
+            let mut talents_idx = [0u16; 20];
+            let mut skills_idx  = [0u16; 20];
+            let mut lang_idx    = [0u16; 8];
+            
+            let str_idx = add_entry_if_missing(&mut number_buffer, stats_arr[0]);
+            let dex_idx = add_entry_if_missing(&mut number_buffer, stats_arr[1]);
+            let con_idx = add_entry_if_missing(&mut number_buffer, stats_arr[2]);
+            let int_idx = add_entry_if_missing(&mut number_buffer, stats_arr[3]);
+            let wis_idx = add_entry_if_missing(&mut number_buffer, stats_arr[4]);
+            let cha_idx = add_entry_if_missing(&mut number_buffer, stats_arr[5]);
+            
+            let bab_idx = add_entry_if_missing(&mut number_buffer, stats_arr[6]);
+            let cmb_idx = add_entry_if_missing(&mut number_buffer, stats_arr[7]);
+            let cmd_idx = add_entry_if_missing(&mut number_buffer, stats_arr[8]);
+            
+            for t in 0..talent_count
+            { talents_idx[t] = add_entry_if_missing(&mut talents_buffer, stats_arr[9+t]); }
+            
+            for s in 0..skill_count
+            { skills_idx[s]  = add_entry_if_missing(&mut skills_buffer, stats_arr[10+s+skill_off]); }
+            
+            for l in 0..lang_count
+            { lang_idx[l]    = add_entry_if_missing(&mut languages_buffer, stats_arr[11+l+lang_off]); }
+            
+            let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
+            let racial_mods  = add_entry(&mut mob_string_buffer, stats_arr[12+after_lang_off]);
+            let spec_qual    = add_entry(&mut mob_string_buffer, stats_arr[13+after_lang_off]);
+            
+            //All specials
+            let specials_idx = add_entry(&mut mob_string_buffer, &specials);
+            
+            //Ecology
+            let env_idx      = add_entry_if_missing(&mut environment_buffer, ecology_arr[0]);
+            let org_idx      = add_entry(&mut mob_string_buffer, ecology_arr[1]);
+            let treasure_idx = add_entry(&mut mob_string_buffer, ecology_arr[2]);
+            
+            //Desc
+            let desc_idx     = add_entry(&mut mob_string_buffer, &desc);
+            
+            //Source
+            let source_idx   = add_entry(&mut mob_string_buffer, &source);
         }
-        */
+        
         
         /*
         let mut tmp_file = BufWriter::new(OpenOptions::new().append(true).create(true).open("result.txt").unwrap());
@@ -614,7 +725,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tmp_file.flush()?;
         */
         
-        if head_arr[0] == "Kitsune"
+        
+        /*
+        if head_arr[0] == "Cane Foo"
         {
             println!("IDX: {}", file_idx);
             
@@ -635,10 +748,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if desc.is_empty() { println!("Was empty"); } else { println!("{}", desc); }    //NOTE: Desc is already what I want.
             
             println!("{}", source);   //NOTE: Source is already what I want.
-            
             panic!();
         }
-        
+        */
     }
     
     let elapsed = now.elapsed();
