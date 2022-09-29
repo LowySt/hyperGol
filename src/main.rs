@@ -5,6 +5,8 @@ use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
 use bytebuffer::ByteBuffer;
+use widestring::Utf32String;
+use byte_slice_cast::*;
 
 static BLACKLIST: [&str; 63] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium"];
 
@@ -159,28 +161,20 @@ fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let entry_data = entry_data_str.as_bytes();
     let entry_len  = entry_data_str.len();
+    let entry_utf32 = Utf32String::from_str(entry_data_str);
     
     let mut cursor: usize = 0;
     
     //NOTE: Index 0 means an empty entry.
     if entry_len == 0 { return 0u16; }
     
-    //Bullshit bullshit bullshit
-    let mut converted_data: Vec<u8> = Vec::with_capacity(entry_len*4);
-    for i in 0..entry_len 
-    { 
-        converted_data.push(entry_data[i]);
-        converted_data.push(0);
-        converted_data.push(0);
-        converted_data.push(0);
-    }
     
     cursor = buf.get_wpos();
     
     //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = entry_len*4;
-    buf.write_u8(entry_bytes as u8);
-    buf.write_bytes(converted_data.as_slice());
+    let entry_bytes = entry_utf32.as_slice().len()*4;
+    buf.write_u16(entry_bytes as u16);
+    buf.write_bytes(entry_utf32.as_slice().as_byte_slice());
     
     let write_cursor = buf.get_wpos();
     buf.set_wpos(0);
@@ -192,8 +186,9 @@ fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
-    let entry_data = entry_data_str.as_bytes();
-    let entry_len  = entry_data_str.len();
+    let entry_data  = entry_data_str.as_bytes();
+    let entry_len   = entry_data_str.len();
+    let entry_utf32 = Utf32String::from_str(entry_data_str);
     
     let mut cursor: usize = 0;
     
@@ -205,28 +200,18 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     while buf.get_rpos() < buf.len()
     {
         cursor         = buf.get_rpos();
-        let check_size = buf.read_u8();
+        let check_size = buf.read_u16();
         let check_data = buf.read_bytes(check_size as usize);
         
-        if entry_data == check_data { return cursor as u16; }
-    }
-    
-    //Bullshit bullshit bullshit
-    let mut converted_data: Vec<u8> = Vec::with_capacity(entry_len*4);
-    for i in 0..entry_len 
-    { 
-        converted_data.push(entry_data[i]);
-        converted_data.push(0);
-        converted_data.push(0);
-        converted_data.push(0);
+        if (entry_utf32.as_slice().as_byte_slice() == check_data) == true { return cursor as u16; }
     }
     
     cursor = buf.get_wpos();
     
     //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = entry_len*4;
-    buf.write_u8(entry_bytes as u8);
-    buf.write_bytes(converted_data.as_slice());
+    let entry_bytes = entry_utf32.as_slice().len()*4;
+    buf.write_u16(entry_bytes as u16);
+    buf.write_bytes(entry_utf32.as_slice().as_byte_slice());
     
     let write_cursor = buf.get_wpos();
     buf.set_wpos(0);
@@ -318,27 +303,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let test_index = [1255, 1946, 2170, array_of_paths.len()-1];
     
     //sizeof+char_arr
-    let mut number_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut name_buffer           = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut gs_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut pe_buffer             = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut alignment_buffer      = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut archetypes_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut sizes_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut senses_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut auras_buffer          = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut immunities_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut resistances_buffer    = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut weaknesses_buffer     = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut special_attack_buffer = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut spells_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut talents_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut skills_buffer         = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut languages_buffer      = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut environment_buffer    = ByteBuffer::from_bytes(&[0u8;64]);
-    let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;64]);
+    let mut number_buffer         = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut name_buffer           = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut gs_buffer             = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut pe_buffer             = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut alignment_buffer      = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut types_buffer          = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut subtypes_buffer       = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut archetypes_buffer     = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut sizes_buffer          = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut senses_buffer         = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut auras_buffer          = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut immunities_buffer     = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut resistances_buffer    = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut weaknesses_buffer     = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut special_attack_buffer = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut spells_buffer         = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut talents_buffer        = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut skills_buffer         = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut languages_buffer      = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut environment_buffer    = ByteBuffer::from_bytes(&[0u8;4]);
+    let mut sources_buffer        = ByteBuffer::from_bytes(&[0u8;4]);
     
     //for file_idx in 292..293
     for file_idx in 0..array_of_paths.len()
@@ -609,7 +594,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let pe_idx   = add_entry_if_missing(&mut pe_buffer, head_arr[2]);
             
             //Class Info
-            let mut subtypes_idx = [0u16; 4];
+            let mut subtypes_idx = [0u16; 8];
             let mut arch_idx     = [0u16; 4];
             
             let origin_idx     = add_entry(&mut mob_string_buffer, &origin);
@@ -637,9 +622,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let perception_idx = add_entry_if_missing(&mut number_buffer, misc_arr[2+senses_off]);
             
             //Defense
-            let mut immunities_idx  = [0u16; 8];
-            let mut resistances_idx = [0u16; 8];
-            let mut weaknesses_idx  = [0u16; 8];
+            let mut immunities_idx  = [0u16; 16];
+            let mut resistances_idx = [0u16; 16];
+            let mut weaknesses_idx  = [0u16; 16];
             
             let ac_idx            = add_entry(&mut mob_string_buffer, defense_arr[0]);
             let pf_idx            = add_entry(&mut mob_string_buffer, defense_arr[1]);
@@ -671,9 +656,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let spells_idx   = add_entry(&mut mob_string_buffer, attack_arr[8]);
             
             //Stats
-            let mut talents_idx = [0u16; 20];
-            let mut skills_idx  = [0u16; 20];
-            let mut lang_idx    = [0u16; 8];
+            let mut talents_idx = [0u16; 24];
+            let mut skills_idx  = [0u16; 24];
+            let mut lang_idx    = [0u16; 24];
             
             let str_idx = add_entry_if_missing(&mut number_buffer, stats_arr[0]);
             let dex_idx = add_entry_if_missing(&mut number_buffer, stats_arr[1]);
