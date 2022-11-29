@@ -1,5 +1,8 @@
 #![allow(warnings, unused)]
 
+use isahc::prelude::*;
+
+use std::thread;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
@@ -7,6 +10,7 @@ use std::io::prelude::*;
 use bytebuffer::ByteBuffer;
 use widestring::Utf32String;
 use byte_slice_cast::*;
+use byteorder::{ByteOrder, LittleEndian};
 
 static BLACKLIST: [&str; 63] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium"];
 
@@ -163,8 +167,8 @@ struct Buffer_Context
     talents_buffer        : ByteBuffer,
     skills_buffer         : ByteBuffer,
     languages_buffer      : ByteBuffer,
+    specials_buffer       : ByteBuffer,
     environment_buffer    : ByteBuffer,
-    sources_buffer        : ByteBuffer,
 }
 
 
@@ -218,7 +222,7 @@ struct Entry
     lang: [u16; 24],
     racial_mods: u16,
     spec_qual: u16,
-    specials: u16, //TODO: Separate them all.
+    specials: [u16; 24],
     env: u16,
     org: u16,
     treasure: u16,
@@ -234,7 +238,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     let head_arr      = fill_array_from_available(&page.header, &head_check);
     
     //NOTE: Just helping golarion out. If missing shit, I'm gonna report it to fix it.
-    if page.desc.is_empty() { println!("IDX: {}, Name: {}", file_idx, head_arr[0]); }
+    //if page.desc.is_empty() { println!("IDX: {}, Name: {}", file_idx, head_arr[0]); }
     
     let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
     let mut class_arr = fill_array_from_available(&page.class, &class_check);
@@ -290,7 +294,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     let arch_off     = if arch_count > 0  { (arch_count - 1) + subtypes_off } else { subtypes_off };
     
     //NOTE We differentiate all senses, and from perception we only keep the value
-    let misc_check    = ["Sensi:", "Percezione "];
+    let misc_check    = ["Sensi:", "Percezione ", "Aura:"];
     let mut misc_arr  = fill_array_from_available(&page.misc, &misc_check);
     
     //NOTE: Manually fix all misc
@@ -332,7 +336,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     //NOTE: Manually fix AC
     defense_arr[0] = defense_arr[0].get(4..).unwrap();
     
-    //TODO Maybe further parsing to compress and better separate the spell strings?
+    //TODO Maybe further parsing to compress and better separate attacks and spell strings?
     let attack_check   = ["Mischia:", "Distanza:", "Attacchi Speciali:", "Spazio:", "Portata:",
                           "Magia Psichica:", "Capacità Magiche:", "Incantesimi:" ];
     let mut attack_arr = fill_array_from_available(&page.attack, &attack_check);
@@ -381,7 +385,17 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
         stats_arr[5] = stats_arr[5].get(7..).unwrap().trim();
     }
     
-    //TODO: Separate each special ability/quality whatever they are called to deduplicate
+    let mut specials_arr: Vec<&str> = Vec::new();
+    let mut el: &str = "";
+    let mut next: &str = &page.special;
+    loop
+    {
+        (el, next)  = get_until(next, "\n\n");
+        
+        if el == GLOBAL_NULL { break; }
+        specials_arr.push(el);
+    }
+    
     let ecology_check   = ["Organizzazione:", "Tesoro:"];
     let mut ecology_arr = fill_array_from_available(&page.ecology, &ecology_check);
     
@@ -493,7 +507,9 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     let spec_qual    = add_entry(&mut mob_string_buffer, stats_arr[13+after_lang_off]);
     
     //All specials
-    let specials_idx = add_entry(&mut mob_string_buffer, &page.special);
+    let mut specials_idx = [0u16; 24];
+    for s in 0..specials_arr.len()
+    { specials_idx[s] = add_entry(&mut buf_context.specials_buffer, &specials_arr[s]); }
     
     //Ecology
     let env_idx      = add_entry_if_missing(&mut buf_context.environment_buffer, ecology_arr[0]);
@@ -509,6 +525,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     total_size += mob_string_buffer.len();
     
     
+    /*
     //if head_arr[0] == "Ragno Mannaro (Forma Umana)"
     {
         println!("IDX: {}", file_idx);
@@ -531,7 +548,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
         
         println!("{}", page.source);   //NOTE: Source is already what I want.
     }
-    
+    */
     
     let mut entry = Entry {
         string_buffer: mob_string_buffer,
@@ -709,6 +726,69 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     return result_arr;
 }
 
+//NOTETODO: Let's try with byte strings
+fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+{
+    let entry_data = entry_data_str.as_bytes();
+    let entry_len  = entry_data_str.len();
+    
+    let mut cursor: usize = 0;
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return 0u16; }
+    
+    cursor = buf.get_wpos();
+    
+    buf.write_bytes([entry_len as u16].as_byte_slice());
+    buf.write_bytes(entry_data);
+    
+    let write_cursor = buf.get_wpos();
+    let new_buff_size = (buf.len() - 4) as u32;
+    buf.set_wpos(0);
+    buf.write_bytes([new_buff_size].as_byte_slice());
+    buf.set_wpos(write_cursor);
+    
+    return cursor as u16;
+}
+
+fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+{
+    let entry_data  = entry_data_str.as_bytes();
+    let entry_len   = entry_data_str.len();
+    
+    let mut cursor: usize = 0;
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return 0u16; }
+    
+    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
+    buf.set_rpos(4);
+    while buf.get_rpos() < buf.len()
+    {
+        cursor         = buf.get_rpos();
+        let check_size = LittleEndian::read_u16(&buf.read_bytes(2));
+        let check_data = buf.read_bytes(check_size as usize);
+        
+        if (entry_data == check_data) == true {
+            return cursor as u16;
+        }
+    }
+    
+    cursor = buf.get_wpos();
+    
+    buf.write_bytes([entry_len as u16].as_byte_slice());
+    buf.write_bytes(entry_data);
+    
+    let write_cursor = buf.get_wpos();
+    let new_buff_size = (buf.len() - 4) as u32;
+    buf.set_wpos(0);
+    buf.write_bytes([new_buff_size].as_byte_slice());
+    buf.set_wpos(write_cursor);
+    
+    return cursor as u16;
+}
+
+/* NOTETODO: Let's try with byte strings
 fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let entry_data = entry_data_str.as_bytes();
@@ -774,6 +854,7 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     
     return cursor as u16;
 }
+*/
 
 fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> usize
 {
@@ -798,14 +879,15 @@ fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> u
     return number_of_inserts;
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+//fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), isahc::Error> {
     
     use std::time::Instant;
     let now = Instant::now();
     
-    let client = reqwest::blocking::Client::new();
-    
-    let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
+    //let client = reqwest::blocking::Client::new();
+    //let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
+    let mut body = isahc::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
     
     let offset  = body.find("wiki_table_filter").unwrap();
     let slice_1 = body.get((offset - 11)..).unwrap();
@@ -852,18 +934,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         talents_buffer        : ByteBuffer::from_bytes(&[0u8;4]),
         skills_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
         languages_buffer      : ByteBuffer::from_bytes(&[0u8;4]),
+        specials_buffer       : ByteBuffer::from_bytes(&[0u8;4]),
         environment_buffer    : ByteBuffer::from_bytes(&[0u8;4]),
-        sources_buffer        : ByteBuffer::from_bytes(&[0u8;4]),
     };
+    
+    let mut entries_vec = Vec::new();
     
     let mut total_size : usize = 0;
     
-    for file_idx in 319..320
+    for file_idx in 1800..1801//1900
         //for file_idx in 0..array_of_paths.len()
     {
+        //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
         println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]);
         
-        let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
+        //thread::sleep_ms(2000);
+        
+        //let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
+        /*
+        let mut mob_body_opt_send = reqwest::blocking::get(&array_of_paths[file_idx]);
+        let maxRetries = 5;
+        let mut retries    = 1;
+        while(mob_body_opt_send.is_err()) //NOTE: Gonna assume is the bullshit 10054 ConnectionReset
+        {
+            if (retries >= maxRetries) { println!("Fuck me too many retries"); return Ok(()); }
+            
+            println!("Retrying after sleeping {} seconds", 2*retries);
+            thread::sleep_ms(2000*retries);
+            mob_body_opt_send = reqwest::blocking::get(&array_of_paths[file_idx]);
+            retries += 1;
+        }
+        
+        let mob_body_opt = mob_body_opt_send.unwrap().text()?;
+        */
+        
+        let mut mob_body_opt = isahc::get(&array_of_paths[file_idx]);
+        if mob_body_opt.is_err()
+        {
+            println!("Retry on error {:?}", mob_body_opt.err());
+            mob_body_opt = isahc::get(&array_of_paths[file_idx]);
+        }
+        
+        let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
         
         let offset_begin = mob_body_opt.find("<h1>");
         if offset_begin.is_none() {
@@ -906,8 +1018,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for mut page in pages
         {
             let entry = create_entry(&mut buf_context, page, total_size, file_idx);
-            
-            //TODO: And now we act, bitch.
+            entries_vec.push(entry);
         }
     }
     
@@ -931,9 +1042,123 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     total_size += buf_context.skills_buffer.len();
     total_size += buf_context.languages_buffer.len();
     total_size += buf_context.environment_buffer.len();
-    total_size += buf_context.sources_buffer.len();
+    total_size += buf_context.specials_buffer.len();
     
     println!("Total Size of Buffers: {}", total_size);
+    
+    println!("Number:      {}", buf_context.number_buffer.len());
+    println!("Name:        {}", buf_context.name_buffer.len());
+    println!("gs:          {}", buf_context.gs_buffer.len());
+    println!("pe:          {}", buf_context.pe_buffer.len());
+    println!("alignment:   {}", buf_context.alignment_buffer.len());
+    println!("types:       {}", buf_context.types_buffer.len());
+    println!("subtypes:    {}", buf_context.subtypes_buffer.len());
+    println!("archetypes:  {}", buf_context.archetypes_buffer.len());
+    println!("sizes:       {}", buf_context.sizes_buffer.len());
+    println!("senses:      {}", buf_context.senses_buffer.len());
+    println!("auras:       {}", buf_context.auras_buffer.len());
+    println!("immunities:  {}", buf_context.immunities_buffer.len());
+    println!("resistances: {}", buf_context.resistances_buffer.len());
+    println!("weaknesses:  {}", buf_context.weaknesses_buffer.len());
+    println!("attack:      {}", buf_context.special_attack_buffer.len());
+    println!("spells:      {}", buf_context.spells_buffer.len());
+    println!("talents:     {}", buf_context.talents_buffer.len());
+    println!("skills:      {}", buf_context.skills_buffer.len());
+    println!("languages:   {}", buf_context.languages_buffer.len());
+    println!("environment: {}", buf_context.environment_buffer.len());
+    println!("specials:    {}", buf_context.specials_buffer.len());
+    
+    
+    let mut result_file = File::create("compendium.bin")?;
+    
+    //NOTE: Write all string buffers
+    result_file.write_all(&buf_context.number_buffer.to_bytes());
+    result_file.write_all(&buf_context.name_buffer.to_bytes());
+    result_file.write_all(&buf_context.gs_buffer.to_bytes());
+    result_file.write_all(&buf_context.pe_buffer.to_bytes());
+    result_file.write_all(&buf_context.alignment_buffer.to_bytes());
+    result_file.write_all(&buf_context.types_buffer.to_bytes());
+    result_file.write_all(&buf_context.subtypes_buffer.to_bytes());
+    result_file.write_all(&buf_context.archetypes_buffer.to_bytes());
+    result_file.write_all(&buf_context.sizes_buffer.to_bytes());
+    result_file.write_all(&buf_context.senses_buffer.to_bytes());
+    result_file.write_all(&buf_context.auras_buffer.to_bytes());
+    result_file.write_all(&buf_context.immunities_buffer.to_bytes());
+    result_file.write_all(&buf_context.resistances_buffer.to_bytes());
+    result_file.write_all(&buf_context.weaknesses_buffer.to_bytes());
+    result_file.write_all(&buf_context.special_attack_buffer.to_bytes());
+    result_file.write_all(&buf_context.spells_buffer.to_bytes());
+    result_file.write_all(&buf_context.talents_buffer.to_bytes());
+    result_file.write_all(&buf_context.skills_buffer.to_bytes());
+    result_file.write_all(&buf_context.languages_buffer.to_bytes());
+    result_file.write_all(&buf_context.environment_buffer.to_bytes());
+    result_file.write_all(&buf_context.specials_buffer.to_bytes());
+    
+    
+    //NOTE: Write entries
+    let mut vecLen = ByteBuffer::new();
+    vecLen.write_u32(entries_vec.len() as u32);
+    result_file.write_all(&vecLen.to_bytes());
+    
+    for mut entry in entries_vec
+    {
+        println!("Entry Name: {:#?}", [entry.name].as_byte_slice());
+        println!("Entry Name Slice: {:#?}", [entry.name]);
+        
+        result_file.write_all(&entry.string_buffer.to_bytes());
+        result_file.write_all([entry.name].as_byte_slice());
+        result_file.write_all([entry.gs].as_byte_slice());
+        result_file.write_all([entry.pe].as_byte_slice());
+        result_file.write_all([entry.origin].as_byte_slice());
+        result_file.write_all([entry.short_desc].as_byte_slice());
+        result_file.write_all([entry.align].as_byte_slice());
+        result_file.write_all([entry.typ].as_byte_slice());
+        result_file.write_all([entry.sub].as_byte_slice());
+        result_file.write_all([entry.arch].as_byte_slice());
+        result_file.write_all([entry.size].as_byte_slice());
+        result_file.write_all([entry.init].as_byte_slice());
+        result_file.write_all([entry.senses].as_byte_slice());
+        result_file.write_all([entry.perception].as_byte_slice());
+        result_file.write_all([entry.ac].as_byte_slice());
+        result_file.write_all([entry.pf].as_byte_slice());
+        result_file.write_all([entry.st].as_byte_slice());
+        result_file.write_all([entry.rd].as_byte_slice());
+        result_file.write_all([entry.ri].as_byte_slice());
+        result_file.write_all([entry.immunities].as_byte_slice());
+        result_file.write_all([entry.resistances].as_byte_slice());
+        result_file.write_all([entry.weaknesses].as_byte_slice());
+        result_file.write_all([entry.def_cap].as_byte_slice());
+        result_file.write_all([entry.speed].as_byte_slice());
+        result_file.write_all([entry.melee].as_byte_slice());
+        result_file.write_all([entry.ranged].as_byte_slice());
+        result_file.write_all([entry.spec_atk].as_byte_slice());
+        result_file.write_all([entry.space].as_byte_slice());
+        result_file.write_all([entry.reach].as_byte_slice());
+        result_file.write_all([entry.psych].as_byte_slice());
+        result_file.write_all([entry.magics].as_byte_slice());
+        result_file.write_all([entry.spells].as_byte_slice());
+        result_file.write_all([entry.str].as_byte_slice());
+        result_file.write_all([entry.dex].as_byte_slice());
+        result_file.write_all([entry.con].as_byte_slice());
+        result_file.write_all([entry.int].as_byte_slice());
+        result_file.write_all([entry.wis].as_byte_slice());
+        result_file.write_all([entry.cha].as_byte_slice());
+        result_file.write_all([entry.bab].as_byte_slice());
+        result_file.write_all([entry.cmb].as_byte_slice());
+        result_file.write_all([entry.cmd].as_byte_slice());
+        result_file.write_all([entry.talents].as_byte_slice());
+        result_file.write_all([entry.skills].as_byte_slice());
+        result_file.write_all([entry.lang].as_byte_slice());
+        result_file.write_all([entry.racial_mods].as_byte_slice());
+        result_file.write_all([entry.spec_qual].as_byte_slice());
+        result_file.write_all([entry.specials].as_byte_slice());
+        result_file.write_all([entry.env].as_byte_slice());
+        result_file.write_all([entry.org].as_byte_slice());
+        result_file.write_all([entry.treasure].as_byte_slice());
+        result_file.write_all([entry.desc].as_byte_slice());
+        result_file.write_all([entry.source].as_byte_slice());
+    }
+    
     
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
