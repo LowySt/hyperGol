@@ -148,6 +148,7 @@ fn get_mob_page(orig_mob_page: &str) -> (Mob_Page, &str)
 
 struct Buffer_Context
 {
+    string_buffer         : ByteBuffer,
     number_buffer         : ByteBuffer,
     name_buffer           : ByteBuffer,
     gs_buffer             : ByteBuffer,
@@ -175,13 +176,11 @@ struct Buffer_Context
 #[derive(Debug)]
 struct Entry
 {
-    string_buffer: ByteBuffer,
-    
     name: u16,
     gs: u16,
     pe: u16,
-    origin: u16,
-    short_desc: u16,
+    origin: u32,
+    short_desc: u32,
     align: u16,
     typ: u16,
     sub: [u16; 8],
@@ -190,24 +189,25 @@ struct Entry
     init: u16,
     senses: [u16; 8],
     perception: u16,
-    ac: u16,
-    pf: u16,
-    st: u16,
-    rd: u16,
-    ri: u16,
+    aura: u16,
+    ac: u32,
+    pf: u32,
+    st: u32,
+    rd: u32,
+    ri: u32,
     immunities: [u16; 16],
     resistances: [u16; 16],
     weaknesses: [u16; 16],
-    def_cap: u16,
+    def_cap: u32,
     speed: u16,
-    melee: u16,
-    ranged: u16,
-    spec_atk: u16,
+    melee: u32,
+    ranged: u32,
+    spec_atk: u32,
     space: u16,
     reach: u16,
-    psych: u16,
-    magics: u16,
-    spells: u16,
+    psych: u32,
+    magics: u32,
+    spells: u32,
     str: u16,
     dex: u16,
     con: u16,
@@ -220,20 +220,18 @@ struct Entry
     talents: [u16; 24],
     skills: [u16; 24],
     lang: [u16; 24],
-    racial_mods: u16,
-    spec_qual: u16,
+    racial_mods: u32,
+    spec_qual: u32,
     specials: [u16; 24],
     env: u16,
-    org: u16,
-    treasure: u16,
-    desc: u16,
-    source: u16,
+    org: u32,
+    treasure: u32,
+    desc: u32,
+    source: u32,
 }
 
-fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_size: usize, file_idx: usize) -> Entry
+fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Entry
 {
-    let mut mob_string_buffer = ByteBuffer::from_bytes(&[0u8;4]);
-    
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
     
@@ -308,6 +306,8 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     { 
         senses_count = flatten_str_list(&mut misc_arr, 1, ", ");
     }
+    
+    //TODO Check auras into misc_arr
     
     let defense_check   = ["PF: ", "Tiri Salvezza: ", "RD: ", "RI: ", "Immunità: ", 
                            "Resistenze: ", "Capacità Difensive: ", "Debolezze: "];
@@ -419,8 +419,8 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     let mut subtypes_idx = [0u16; 8];
     let mut arch_idx     = [0u16; 4];
     
-    let origin_idx     = add_entry(&mut mob_string_buffer, &page.origin);
-    let short_desc_idx = add_entry(&mut mob_string_buffer, class_arr[0]);
+    let origin_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.origin);
+    let short_desc_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, class_arr[0]);
     let align_idx      = add_entry_if_missing(&mut buf_context.alignment_buffer, class_arr[1]);
     let type_idx       = add_entry_if_missing(&mut buf_context.types_buffer, class_arr[2]);
     
@@ -443,16 +443,20 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
     let perception_idx = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[2+senses_off]);
     
+    //TODO Check aura works.
+    let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[3+senses_off]);
+    
     //Defense
     let mut immunities_idx  = [0u16; 16];
     let mut resistances_idx = [0u16; 16];
     let mut weaknesses_idx  = [0u16; 16];
     
-    let ac_idx            = add_entry(&mut mob_string_buffer, defense_arr[0]);
-    let pf_idx            = add_entry(&mut mob_string_buffer, defense_arr[1]);
-    let st_idx            = add_entry(&mut mob_string_buffer, defense_arr[2]);
-    let rd_idx            = add_entry(&mut mob_string_buffer, defense_arr[3]);
-    let ri_idx            = add_entry(&mut mob_string_buffer, defense_arr[4]);
+    //TODO: See if I can move these into the numeric values buffer
+    let ac_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[0]);
+    let pf_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[1]);
+    let st_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[2]);
+    let rd_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[3]);
+    let ri_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[4]);
     
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut buf_context.immunities_buffer, defense_arr[5+i]); }
@@ -461,21 +465,21 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     { resistances_idx[r]  = add_entry_if_missing(&mut buf_context.resistances_buffer, defense_arr[6+res_offset+r]); }
     
     let def_cap_off = 7 + weak_offset;
-    let defensive_cap_idx = add_entry(&mut mob_string_buffer, defense_arr[def_cap_off]);
+    let defensive_cap_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
     { weaknesses_idx[w]   = add_entry_if_missing(&mut buf_context.weaknesses_buffer, defense_arr[8+weak_offset+w]); }
     
     //Attack
     let speed_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[0]);
-    let melee_idx    = add_entry(&mut mob_string_buffer, attack_arr[1]);
-    let ranged_idx   = add_entry(&mut mob_string_buffer, attack_arr[2]);
-    let spec_atk_idx = add_entry(&mut mob_string_buffer, attack_arr[3]);
+    let melee_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[1]);
+    let ranged_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[2]);
+    let spec_atk_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[3]);
     let space_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[4]);
     let reach_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[5]);
-    let psych_idx    = add_entry(&mut mob_string_buffer, attack_arr[6]);
-    let magics_idx   = add_entry(&mut mob_string_buffer, attack_arr[7]);
-    let spells_idx   = add_entry(&mut mob_string_buffer, attack_arr[8]);
+    let psych_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[6]);
+    let magics_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[7]);
+    let spells_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[8]);
     
     //Stats
     let mut talents_idx = [0u16; 24];
@@ -503,27 +507,24 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     { lang_idx[l]    = add_entry_if_missing(&mut buf_context.languages_buffer, stats_arr[11+l+lang_off]); }
     
     let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
-    let racial_mods  = add_entry(&mut mob_string_buffer, stats_arr[12+after_lang_off]);
-    let spec_qual    = add_entry(&mut mob_string_buffer, stats_arr[13+after_lang_off]);
+    let racial_mods  = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
+    let spec_qual    = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
     
     //All specials
     let mut specials_idx = [0u16; 24];
     for s in 0..specials_arr.len()
-    { specials_idx[s] = add_entry(&mut buf_context.specials_buffer, &specials_arr[s]); }
+    { specials_idx[s] = add_entry_if_missing(&mut buf_context.specials_buffer, &specials_arr[s]); }
     
     //Ecology
     let env_idx      = add_entry_if_missing(&mut buf_context.environment_buffer, ecology_arr[0]);
-    let org_idx      = add_entry(&mut mob_string_buffer, ecology_arr[1]);
-    let treasure_idx = add_entry(&mut mob_string_buffer, ecology_arr[2]);
+    let org_idx      = add_entry_if_missing_u32(&mut buf_context.string_buffer, ecology_arr[1]);
+    let treasure_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, ecology_arr[2]);
     
     //Desc
-    let desc_idx     = add_entry(&mut mob_string_buffer, &page.desc);
+    let desc_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.desc);
     
     //Source
-    let source_idx   = add_entry(&mut mob_string_buffer, &page.source);
-    
-    total_size += mob_string_buffer.len();
-    
+    let source_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.source);
     
     /*
     //if head_arr[0] == "Ragno Mannaro (Forma Umana)"
@@ -551,8 +552,6 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
     */
     
     let mut entry = Entry {
-        string_buffer: mob_string_buffer,
-        
         name: name_idx,
         gs: gs_idx,
         pe: pe_idx,
@@ -566,6 +565,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, mut total_
         init: init_idx,
         senses: senses_idx,
         perception: perception_idx,
+        aura: aura_idx,
         ac: ac_idx,
         pf: pf_idx,
         st: st_idx,
@@ -727,15 +727,28 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
 }
 
 //NOTETODO: Let's try with byte strings
-fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
-    let entry_data = entry_data_str.as_bytes();
-    let entry_len  = entry_data_str.len();
+    let entry_data  = entry_data_str.as_bytes();
+    let entry_len   = entry_data_str.len();
     
     let mut cursor: usize = 0;
     
     //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
+    if entry_len == 0 { return 0u32; }
+    
+    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
+    buf.set_rpos(4);
+    while buf.get_rpos() < buf.len()
+    {
+        cursor         = buf.get_rpos();
+        let check_size = LittleEndian::read_u16(&buf.read_bytes(2));
+        let check_data = buf.read_bytes(check_size as usize);
+        
+        if (entry_data == check_data) == true {
+            return cursor as u32;
+        }
+    }
     
     cursor = buf.get_wpos();
     
@@ -748,7 +761,7 @@ fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     buf.write_bytes([new_buff_size].as_byte_slice());
     buf.set_wpos(write_cursor);
     
-    return cursor as u16;
+    return cursor as u32;
 }
 
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
@@ -915,6 +928,7 @@ fn main() -> Result<(), isahc::Error> {
     }
     
     let mut buf_context = Buffer_Context {
+        string_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
         number_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
         name_buffer           : ByteBuffer::from_bytes(&[0u8;4]),
         gs_buffer             : ByteBuffer::from_bytes(&[0u8;4]),
@@ -942,7 +956,7 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_size : usize = 0;
     
-    for file_idx in 1800..1801//1900
+    for file_idx in 1800..1900
         //for file_idx in 0..array_of_paths.len()
     {
         //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
@@ -1017,11 +1031,12 @@ fn main() -> Result<(), isahc::Error> {
         
         for mut page in pages
         {
-            let entry = create_entry(&mut buf_context, page, total_size, file_idx);
+            let entry = create_entry(&mut buf_context, page, file_idx);
             entries_vec.push(entry);
         }
     }
     
+    total_size += buf_context.string_buffer.len();
     total_size += buf_context.number_buffer.len();
     total_size += buf_context.name_buffer.len();
     total_size += buf_context.gs_buffer.len();
@@ -1046,6 +1061,7 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Total Size of Buffers: {}", total_size);
     
+    println!("Number:      {}", buf_context.string_buffer.len());
     println!("Number:      {}", buf_context.number_buffer.len());
     println!("Name:        {}", buf_context.name_buffer.len());
     println!("gs:          {}", buf_context.gs_buffer.len());
@@ -1069,9 +1085,10 @@ fn main() -> Result<(), isahc::Error> {
     println!("specials:    {}", buf_context.specials_buffer.len());
     
     
-    let mut result_file = File::create("compendium.bin")?;
+    let mut result_file = File::create("Compendium")?;
     
     //NOTE: Write all string buffers
+    result_file.write_all(&buf_context.string_buffer.to_bytes());
     result_file.write_all(&buf_context.number_buffer.to_bytes());
     result_file.write_all(&buf_context.name_buffer.to_bytes());
     result_file.write_all(&buf_context.gs_buffer.to_bytes());
@@ -1102,10 +1119,6 @@ fn main() -> Result<(), isahc::Error> {
     
     for mut entry in entries_vec
     {
-        println!("Entry Name: {:#?}", [entry.name].as_byte_slice());
-        println!("Entry Name Slice: {:#?}", [entry.name]);
-        
-        result_file.write_all(&entry.string_buffer.to_bytes());
         result_file.write_all([entry.name].as_byte_slice());
         result_file.write_all([entry.gs].as_byte_slice());
         result_file.write_all([entry.pe].as_byte_slice());
