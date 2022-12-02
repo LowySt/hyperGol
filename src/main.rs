@@ -956,7 +956,7 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_size : usize = 0;
     
-    for file_idx in 1800..1900
+    for file_idx in 1800..1801
         //for file_idx in 0..array_of_paths.len()
     {
         //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
@@ -1125,20 +1125,26 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.short_desc].as_byte_slice());
         result_file.write_all([entry.align].as_byte_slice());
         result_file.write_all([entry.typ].as_byte_slice());
-        result_file.write_all([entry.sub].as_byte_slice());
-        result_file.write_all([entry.arch].as_byte_slice());
+        
+        for mut el in entry.sub  { result_file.write_all([el].as_byte_slice()); }
+        for mut el in entry.arch { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.size].as_byte_slice());
         result_file.write_all([entry.init].as_byte_slice());
-        result_file.write_all([entry.senses].as_byte_slice());
+        
+        for mut el in entry.senses { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.perception].as_byte_slice());
         result_file.write_all([entry.ac].as_byte_slice());
         result_file.write_all([entry.pf].as_byte_slice());
         result_file.write_all([entry.st].as_byte_slice());
         result_file.write_all([entry.rd].as_byte_slice());
         result_file.write_all([entry.ri].as_byte_slice());
-        result_file.write_all([entry.immunities].as_byte_slice());
-        result_file.write_all([entry.resistances].as_byte_slice());
-        result_file.write_all([entry.weaknesses].as_byte_slice());
+        
+        for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
+        for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
+        for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.def_cap].as_byte_slice());
         result_file.write_all([entry.speed].as_byte_slice());
         result_file.write_all([entry.melee].as_byte_slice());
@@ -1158,12 +1164,16 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.bab].as_byte_slice());
         result_file.write_all([entry.cmb].as_byte_slice());
         result_file.write_all([entry.cmd].as_byte_slice());
-        result_file.write_all([entry.talents].as_byte_slice());
-        result_file.write_all([entry.skills].as_byte_slice());
-        result_file.write_all([entry.lang].as_byte_slice());
+        
+        for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
+        for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
+        for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.racial_mods].as_byte_slice());
         result_file.write_all([entry.spec_qual].as_byte_slice());
-        result_file.write_all([entry.specials].as_byte_slice());
+        
+        for mut el in entry.specials { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.env].as_byte_slice());
         result_file.write_all([entry.org].as_byte_slice());
         result_file.write_all([entry.treasure].as_byte_slice());
