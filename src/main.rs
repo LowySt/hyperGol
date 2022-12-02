@@ -1061,7 +1061,7 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Total Size of Buffers: {}", total_size);
     
-    println!("Number:      {}", buf_context.string_buffer.len());
+    println!("Strings:     {}", buf_context.string_buffer.len());
     println!("Number:      {}", buf_context.number_buffer.len());
     println!("Name:        {}", buf_context.name_buffer.len());
     println!("gs:          {}", buf_context.gs_buffer.len());
@@ -1113,9 +1113,8 @@ fn main() -> Result<(), isahc::Error> {
     
     
     //NOTE: Write entries
-    let mut vecLen = ByteBuffer::new();
-    vecLen.write_u32(entries_vec.len() as u32);
-    result_file.write_all(&vecLen.to_bytes());
+    let vecLen = entries_vec.len() as u32;
+    result_file.write_all([vecLen].as_byte_slice());
     
     for mut entry in entries_vec
     {
@@ -1174,7 +1173,7 @@ fn main() -> Result<(), isahc::Error> {
     
     
     let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
+    println!("Elapsed:     {:.2?}", elapsed);
     
     Ok(())
 }
