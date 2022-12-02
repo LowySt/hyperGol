@@ -176,58 +176,59 @@ struct Buffer_Context
 #[derive(Debug)]
 struct Entry
 {
-    name: u16,
-    gs: u16,
-    pe: u16,
-    origin: u32,
-    short_desc: u32,
-    align: u16,
-    typ: u16,
-    sub: [u16; 8],
-    arch: [u16; 4],
-    size: u16,
-    init: u16,
-    senses: [u16; 8],
-    perception: u16,
-    aura: u16,
-    ac: u32,
-    pf: u32,
-    st: u32,
-    rd: u32,
-    ri: u32,
-    immunities: [u16; 16],
-    resistances: [u16; 16],
-    weaknesses: [u16; 16],
-    def_cap: u32,
-    speed: u16,
-    melee: u32,
-    ranged: u32,
-    spec_atk: u32,
-    space: u16,
-    reach: u16,
-    psych: u32,
-    magics: u32,
-    spells: u32,
-    str: u16,
-    dex: u16,
-    con: u16,
-    int: u16,
-    wis: u16,
-    cha: u16,
-    bab: u16,
-    cmb: u16,
-    cmd: u16,
-    talents: [u16; 24],
-    skills: [u16; 24],
-    lang: [u16; 24],
+    origin     : u32,
+    short_desc : u32,
+    ac         : u32,
+    pf         : u32,
+    st         : u32,
+    rd         : u32,
+    ri         : u32,
+    def_cap    : u32,
+    melee      : u32,
+    ranged     : u32,
+    spec_atk   : u32,
+    psych      : u32,
+    magics     : u32,
+    spells     : u32,
     racial_mods: u32,
-    spec_qual: u32,
-    specials: [u16; 24],
-    env: u16,
-    org: u32,
-    treasure: u32,
-    desc: u32,
-    source: u32,
+    spec_qual  : u32,
+    org        : u32,
+    treasure   : u32,
+    desc       : u32,
+    source     : u32,
+    
+    name       : u16,
+    gs         : u16,
+    pe         : u16,
+    align      : u16,
+    typ        : u16,
+    sub        : [u16; 8],
+    arch       : [u16; 4],
+    size       : u16,
+    init       : u16,
+    senses     : [u16; 8],
+    perception : u16,
+    aura       : u16,
+    immunities : [u16; 16],
+    resistances: [u16; 16],
+    weaknesses : [u16; 16],
+    speed      : u16,
+    space      : u16,
+    reach      : u16,
+    str        : u16,
+    dex        : u16,
+    con        : u16,
+    int        : u16,
+    wis        : u16,
+    cha        : u16,
+    bab        : u16,
+    cmb        : u16,
+    cmd        : u16,
+    talents    : [u16; 24],
+    skills     : [u16; 24],
+    lang       : [u16; 24],
+    specials   : [u16; 24],
+    env        : u16,
 }
 
 fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Entry
@@ -1118,11 +1119,30 @@ fn main() -> Result<(), isahc::Error> {
     
     for mut entry in entries_vec
     {
+        result_file.write_all([entry.origin].as_byte_slice());
+        result_file.write_all([entry.short_desc].as_byte_slice());
+        result_file.write_all([entry.ac].as_byte_slice());
+        result_file.write_all([entry.pf].as_byte_slice());
+        result_file.write_all([entry.st].as_byte_slice());
+        result_file.write_all([entry.rd].as_byte_slice());
+        result_file.write_all([entry.ri].as_byte_slice());
+        result_file.write_all([entry.def_cap].as_byte_slice());
+        result_file.write_all([entry.melee].as_byte_slice());
+        result_file.write_all([entry.ranged].as_byte_slice());
+        result_file.write_all([entry.spec_atk].as_byte_slice());
+        result_file.write_all([entry.psych].as_byte_slice());
+        result_file.write_all([entry.magics].as_byte_slice());
+        result_file.write_all([entry.spells].as_byte_slice());
+        result_file.write_all([entry.racial_mods].as_byte_slice());
+        result_file.write_all([entry.spec_qual].as_byte_slice());
+        result_file.write_all([entry.org].as_byte_slice());
+        result_file.write_all([entry.treasure].as_byte_slice());
+        result_file.write_all([entry.desc].as_byte_slice());
+        result_file.write_all([entry.source].as_byte_slice());
+        
         result_file.write_all([entry.name].as_byte_slice());
         result_file.write_all([entry.gs].as_byte_slice());
         result_file.write_all([entry.pe].as_byte_slice());
-        result_file.write_all([entry.origin].as_byte_slice());
-        result_file.write_all([entry.short_desc].as_byte_slice());
         result_file.write_all([entry.align].as_byte_slice());
         result_file.write_all([entry.typ].as_byte_slice());
         
@@ -1135,26 +1155,14 @@ fn main() -> Result<(), isahc::Error> {
         for mut el in entry.senses { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.perception].as_byte_slice());
-        result_file.write_all([entry.ac].as_byte_slice());
-        result_file.write_all([entry.pf].as_byte_slice());
-        result_file.write_all([entry.st].as_byte_slice());
-        result_file.write_all([entry.rd].as_byte_slice());
-        result_file.write_all([entry.ri].as_byte_slice());
         
         for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
         
-        result_file.write_all([entry.def_cap].as_byte_slice());
         result_file.write_all([entry.speed].as_byte_slice());
-        result_file.write_all([entry.melee].as_byte_slice());
-        result_file.write_all([entry.ranged].as_byte_slice());
-        result_file.write_all([entry.spec_atk].as_byte_slice());
         result_file.write_all([entry.space].as_byte_slice());
         result_file.write_all([entry.reach].as_byte_slice());
-        result_file.write_all([entry.psych].as_byte_slice());
-        result_file.write_all([entry.magics].as_byte_slice());
-        result_file.write_all([entry.spells].as_byte_slice());
         result_file.write_all([entry.str].as_byte_slice());
         result_file.write_all([entry.dex].as_byte_slice());
         result_file.write_all([entry.con].as_byte_slice());
@@ -1168,17 +1176,9 @@ fn main() -> Result<(), isahc::Error> {
         for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
-        
-        result_file.write_all([entry.racial_mods].as_byte_slice());
-        result_file.write_all([entry.spec_qual].as_byte_slice());
-        
         for mut el in entry.specials { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.env].as_byte_slice());
-        result_file.write_all([entry.org].as_byte_slice());
-        result_file.write_all([entry.treasure].as_byte_slice());
-        result_file.write_all([entry.desc].as_byte_slice());
-        result_file.write_all([entry.source].as_byte_slice());
     }
     
     
