@@ -469,7 +469,9 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     let defensive_cap_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
-    { weaknesses_idx[w]   = add_entry_if_missing(&mut buf_context.weaknesses_buffer, defense_arr[8+weak_offset+w]); }
+    {
+        weaknesses_idx[w]   = add_entry_if_missing(&mut buf_context.weaknesses_buffer, defense_arr[8+weak_offset+w]);
+    }
     
     //Attack
     let speed_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[0]);
@@ -1155,6 +1157,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut el in entry.senses { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.perception].as_byte_slice());
+        result_file.write_all([entry.aura].as_byte_slice());
         
         for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
