@@ -732,8 +732,10 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
 //NOTETODO: Let's try with byte strings
 fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
-    let entry_data  = entry_data_str.as_bytes();
-    let entry_len   = entry_data_str.len();
+    let replace_shit = entry_data_str.replace("\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2019}", "'");
+    let entry_data   = replace_shit.as_bytes();
+    let entry_len    = replace_shit.len();
     
     let mut cursor: usize = 0;
     
@@ -769,8 +771,10 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
-    let entry_data  = entry_data_str.as_bytes();
-    let entry_len   = entry_data_str.len();
+    let replace_shit = str::replace(entry_data_str, "\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2019}", "'");
+    let entry_data  = replace_shit.as_bytes();
+    let entry_len   = replace_shit.len();
     
     let mut cursor: usize = 0;
     
