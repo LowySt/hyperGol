@@ -339,7 +339,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     
     //TODO Maybe further parsing to compress and better separate attacks and spell strings?
     let attack_check   = ["Mischia:", "Distanza:", "Attacchi Speciali:", "Spazio:", "Portata:",
-                          "Magia Psichica:", "Capacità Magiche:", "Incantesimi:" ];
+                          "Magia Psichica:", "Capacità Magiche:", "Incantesimi Conosciuti:" ];
     let mut attack_arr = fill_array_from_available(&page.attack, &attack_check);
     
     //NOTE: Manually fix Speed
@@ -733,6 +733,7 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
 fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
     let replace_shit = entry_data_str.replace("\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2014}", "-");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let entry_data   = replace_shit.as_bytes();
     let entry_len    = replace_shit.len();
@@ -772,9 +773,10 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2014}", "-");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let entry_data  = replace_shit.as_bytes();
-    let entry_len   = replace_shit.len();
+    let entry_data   = replace_shit.as_bytes();
+    let entry_len    = replace_shit.len();
     
     let mut cursor: usize = 0;
     
@@ -963,7 +965,7 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_size : usize = 0;
     
-    for file_idx in 1800..1801
+    for file_idx in 1615..1816
         //for file_idx in 0..array_of_paths.len()
     {
         //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
