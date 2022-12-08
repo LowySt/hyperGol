@@ -192,6 +192,7 @@ struct Entry
     spells     : u32,
     racial_mods: u32,
     spec_qual  : u32,
+    specials   : [u32; 24],
     org        : u32,
     treasure   : u32,
     desc       : u32,
@@ -227,7 +228,6 @@ struct Entry
     talents    : [u16; 24],
     skills     : [u16; 24],
     lang       : [u16; 24],
-    specials   : [u16; 24],
     env        : u16,
 }
 
@@ -394,8 +394,11 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
         (el, next)  = get_until(next, "\n\n");
         
         if el == GLOBAL_NULL { break; }
+        
+        //println!("{:#?}\n\n", el);
         specials_arr.push(el);
     }
+    //println!("{:#?}", specials_arr);
     
     let ecology_check   = ["Organizzazione:", "Tesoro:"];
     let mut ecology_arr = fill_array_from_available(&page.ecology, &ecology_check);
@@ -514,9 +517,10 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     let spec_qual    = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
     
     //All specials
-    let mut specials_idx = [0u16; 24];
+    let mut specials_idx = [0u32; 24];
     for s in 0..specials_arr.len()
-    { specials_idx[s] = add_entry_if_missing(&mut buf_context.specials_buffer, &specials_arr[s]); }
+    { specials_idx[s] = add_entry_if_missing_u32(&mut buf_context.specials_buffer, &specials_arr[s]); }
+    //println!("{:#?}", specials_idx);
     
     //Ecology
     let env_idx      = add_entry_if_missing(&mut buf_context.environment_buffer, ecology_arr[0]);
@@ -1149,6 +1153,9 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.spells].as_byte_slice());
         result_file.write_all([entry.racial_mods].as_byte_slice());
         result_file.write_all([entry.spec_qual].as_byte_slice());
+        
+        for mut el in entry.specials { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.org].as_byte_slice());
         result_file.write_all([entry.treasure].as_byte_slice());
         result_file.write_all([entry.desc].as_byte_slice());
@@ -1191,7 +1198,6 @@ fn main() -> Result<(), isahc::Error> {
         for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
-        for mut el in entry.specials { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.env].as_byte_slice());
     }
