@@ -293,6 +293,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     let arch_off     = if arch_count > 0  { (arch_count - 1) + subtypes_off } else { subtypes_off };
     
     //NOTE We differentiate all senses, and from perception we only keep the value
+    //TODO: Fix Percezione Tellurica fucks up the parser.
     let misc_check    = ["Sensi:", "Percezione ", "Aura:"];
     let mut misc_arr  = fill_array_from_available(&page.misc, &misc_check);
     
@@ -736,7 +737,8 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
 //NOTETODO: Let's try with byte strings
 fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
-    let replace_shit = entry_data_str.replace("\u{2013}", "-");
+    let replace_shit = entry_data_str.replace("\u{2012}", "-");
+    let replace_shit = replace_shit.replace("\u{2013}", "-");
     let replace_shit = replace_shit.replace("\u{2014}", "-");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
@@ -779,7 +781,8 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
-    let replace_shit = str::replace(entry_data_str, "\u{2013}", "-");
+    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
+    let replace_shit = replace_shit.replace("\u{2013}", "-");
     let replace_shit = replace_shit.replace("\u{2014}", "-");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
