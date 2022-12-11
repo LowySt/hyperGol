@@ -770,11 +770,14 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
     let replace_shit = entry_data_str.replace("\u{2012}", "-");
     let replace_shit = replace_shit.replace("\u{200b}", "");
+    let replace_shit = replace_shit.replace("\u{2011}", "-");
     let replace_shit = replace_shit.replace("\u{2013}", "-");
     let replace_shit = replace_shit.replace("\u{2014}", "-");
+    let replace_shit = replace_shit.replace("\u{2018}", "'");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2026}", "...");
     let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
@@ -817,11 +820,14 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
     let replace_shit = replace_shit.replace("\u{200b}", "");
+    let replace_shit = replace_shit.replace("\u{2011}", "-");
     let replace_shit = replace_shit.replace("\u{2013}", "-");
     let replace_shit = replace_shit.replace("\u{2014}", "-");
+    let replace_shit = replace_shit.replace("\u{2018}", "'");
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2026}", "...");
     let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
