@@ -293,23 +293,56 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     let arch_off     = if arch_count > 0  { (arch_count - 1) + subtypes_off } else { subtypes_off };
     
     //NOTE We differentiate all senses, and from perception we only keep the value
-    //TODO: Fix Percezione Tellurica fucks up the parser.
-    let misc_check    = ["Sensi:", "Percezione ", "Aura:"];
+    let misc_check    = ["Sensi:", "Aura:"];
     let mut misc_arr  = fill_array_from_available(&page.misc, &misc_check);
     
     //NOTE: Manually fix all misc
-    let golarion_grammar_mistake = misc_arr[1].find(";"); //NOTE: Fucking golarion has grammar mistakes.
-    if golarion_grammar_mistake.is_some() { misc_arr[1] = misc_arr[1].get(..misc_arr[1].len()-1).unwrap(); }
-    
-    misc_arr[0] = check_unwrap!(misc_arr[0].get(12..), file_idx, head_arr[0]);
-    
     let mut senses_count = 0;
+    let mut perception_off = 0;
     if !misc_arr[1].is_empty() 
     { 
+        //NOTE: Grab initiative value
+        misc_arr[0] = check_unwrap!(misc_arr[0].get(12..), file_idx, head_arr[0]);
+        
+        //NOTE: Look for perception at the end of senses
+        let index = misc_arr[1].rfind("Percezione ");
+        if index.is_some()
+        {
+            let index = index.unwrap();
+            let senses_value = misc_arr[1].get(..index);
+            if senses_value.is_none() { println!("[ERROR] Senses/Perception Fucked\n"); panic!(); }
+            
+            let perception_value = misc_arr[1].get(index+11..);
+            if perception_value.is_none() { println!("[ERROR] Senses/Perception Fucked\n"); panic!(); }
+            
+            misc_arr[1] = senses_value.unwrap();
+            misc_arr.insert(2, perception_value.unwrap());
+            perception_off = 1;
+        }
+        
         senses_count = flatten_str_list(&mut misc_arr, 1, ", ");
     }
-    
-    //TODO Check auras into misc_arr
+    else
+    {
+        //NOTE: Look for perception at the end of initiative
+        let index = misc_arr[0].rfind("Percezione ");
+        if index.is_some()
+        {
+            let index = index.unwrap();
+            let init_value = misc_arr[0].get(12..index);
+            
+            let perception_value = misc_arr[0].get(index+11..);
+            let perception_value = check_unwrap!(perception_value, file_idx, head_arr[0]);
+            
+            misc_arr[0] = check_unwrap!(init_value, file_idx, head_arr[0]);
+            misc_arr.insert(2, perception_value);
+            perception_off = 1;
+        }
+        else
+        {
+            misc_arr[0] = check_unwrap!(misc_arr[0].get(12..), file_idx, head_arr[0]);
+        }
+    }
     
     let defense_check   = ["PF: ", "Tiri Salvezza: ", "RD: ", "RI: ", "Immunità: ", 
                            "Resistenze: ", "Capacità Difensive: ", "Debolezze: "];
@@ -447,9 +480,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
     
     let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
     let perception_idx = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[2+senses_off]);
-    
-    //TODO Check aura works.
-    let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[3+senses_off]);
+    let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[2+senses_off+perception_off]);
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
@@ -744,6 +775,7 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
     let entry_data   = replace_shit.as_bytes();
@@ -790,6 +822,7 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     let replace_shit = replace_shit.replace("\u{2019}", "'");
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
     let entry_data   = replace_shit.as_bytes();
@@ -982,8 +1015,8 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_size : usize = 0;
     
-    for file_idx in 1615..1816
-        //for file_idx in 0..array_of_paths.len()
+    //for file_idx in 0..100
+    for file_idx in 0..array_of_paths.len()
     {
         //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
         println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]);
