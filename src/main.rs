@@ -305,6 +305,7 @@ fn create_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: 
         misc_arr[0] = check_unwrap!(misc_arr[0].get(12..), file_idx, head_arr[0]);
         
         //NOTE: Look for perception at the end of senses
+        //TODO: If the space after perception is missing, we can't separate it.
         let index = misc_arr[1].rfind("Percezione ");
         if index.is_some()
         {
