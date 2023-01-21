@@ -958,14 +958,47 @@ fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> u
     return number_of_inserts;
 }
 
+fn getArrayOfPaths(database_path: &str) -> Vec<String>
+{
+    let mut body = isahc::get(database_path).unwrap().text().unwrap();
+    
+    let offset  = body.find("wiki_table_filter").unwrap();
+    let slice_1 = body.get((offset - 11)..).unwrap();
+    
+    let offset_end = slice_1.find("</table>").unwrap();
+    let slice_of_page = slice_1.get(..(offset_end+8));
+    
+    let base_url = "https://golarion.altervista.org";
+    let mut array_of_paths = vec![];
+    
+    let mut next_slice_index = slice_of_page.unwrap().find("href=");
+    let mut next_slice = slice_of_page;
+    while next_slice_index.is_some() && next_slice.is_some()
+    {
+        next_slice = next_slice.unwrap().get((next_slice_index.unwrap() + 1)..);
+        if next_slice.is_none() { println!("[ERROR]"); panic!(); }
+        
+        let page_path   = get_path_from_slice(next_slice.unwrap());
+        if page_path.is_some() {
+            let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
+            array_of_paths.push(s_to_push);
+        }
+        
+        next_slice_index = next_slice.unwrap().find("href=");
+    }
+    
+    return array_of_paths;
+}
+
 //fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn main() -> Result<(), isahc::Error> {
     
     use std::time::Instant;
     let now = Instant::now();
     
-    //let client = reqwest::blocking::Client::new();
-    //let body = client.get("https://golarion.altervista.org/wiki/Database_Mostri").send()?.text()?;
+    let mut array_of_paths = getArrayOfPaths("https://golarion.altervista.org/wiki/Database_Mostri");
+    
+    /*
     let mut body = isahc::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
     
     let offset  = body.find("wiki_table_filter").unwrap();
@@ -992,7 +1025,7 @@ fn main() -> Result<(), isahc::Error> {
         
         next_slice_index = next_slice.unwrap().find("href=");
     }
-    
+    */
     let mut buf_context = Buffer_Context {
         string_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
         number_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
