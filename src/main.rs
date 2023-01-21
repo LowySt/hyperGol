@@ -14,8 +14,25 @@ use byteorder::{ByteOrder, LittleEndian};
 
 static BLACKLIST: [&str; 63] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium"];
 
+static NPC_BLACKLIST: [&str; 71] = 
+["/wiki/Umano", "/wiki/Adepto", "/wiki/Combattente", "/wiki/Esperto", "/wiki/Mezzelfo", "/wiki/Popolano",
+ "/wiki/Aristocratico", "/wiki/Halfling", "/wiki/Nano", "/wiki/Chierico", "/wiki/Ladro", "/wiki/Bardo",
+ "/wiki/Ranger", "/wiki/Monaco", "/wiki/Druido", "/wiki/Mago", "/wiki/Barbaro", "/wiki/Guerriero", "/wiki/Paladino",
+ "/wiki/Mezzorco", "/wiki/Stregone", "/wiki/Elfo", "/wiki/Gnomo", "/wiki/Investigatore", "/wiki/Cacciatore",
+ "/wiki/Scaldo", "/wiki/Intrepido", "/wiki/Sacerdote_Guerriero", "/wiki/Inquisitore", "/wiki/Razze/Hobgoblin",
+ "/wiki/Pistolero", "/wiki/Razze/Tengu", "/wiki/Cavaliere", "/wiki/Razze/Goblin", "/wiki/Fattucchiere",
+ "/wiki/Alchimista", "/wiki/Attaccabrighe", "/wiki/Medium", "/wiki/Razze/Tiefling", "/wiki/Vigilante", "/wiki/Antipaladino", "/wiki/Cineta", "/wiki/Ghast", "/wiki/Predatore", "/wiki/Ninja", "/wiki/Magus", "/wiki/Razze/Orco", "/wiki/Minotauro", "/wiki/Occultista", "/wiki/Iracondo_di_Stirpe", "/wiki/Sciamano", 
+ "/wiki/Assassino", "/wiki/Duellante", "/wiki/Ombra_Danzante", "/wiki/Mistificatore_Arcano", "/wiki/Arciere_Arcano",
+ "/wiki/Maestro_del_Sapere", "/wiki/Leshy_Fungo", "/wiki/Discepolo_dei_Draghi", "/wiki/Guerriero_Arcano", "/wiki/Trovatore", "/wiki/Teurgo_Mistico", "/wiki/Parapsichico", "/wiki/Arcanista", "/wiki/Nixie_di_Palude",
+ "/wiki/Mesmerista", "/wiki/Convocatore", "/wiki/Cacciatore_di_Taglie", "/wiki/Razze/Vishkanya", "/wiki/Oracolo",
+ "/wiki/Spiritista"];
+
 fn check_path_against_blacklist(p: &str) -> bool {
 	for v in BLACKLIST {
+		if p == v { return true; }
+	}
+    
+    for v in NPC_BLACKLIST {
 		if p == v { return true; }
 	}
     
@@ -996,7 +1013,15 @@ fn main() -> Result<(), isahc::Error> {
     use std::time::Instant;
     let now = Instant::now();
     
-    let mut array_of_paths = getArrayOfPaths("https://golarion.altervista.org/wiki/Database_Mostri");
+    let mut array_of_paths     = getArrayOfPaths("https://golarion.altervista.org/wiki/Database_Mostri");
+    let mut array_of_npc_paths = getArrayOfPaths("https://golarion.altervista.org/wiki/Database_PNG");
+    
+    for i in 0..array_of_npc_paths.len()
+    {
+        println!("IDX: {}, {}", i, array_of_npc_paths[i]);
+    }
+    
+    return Ok(());
     
     /*
     let mut body = isahc::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
