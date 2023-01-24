@@ -975,6 +975,51 @@ fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> u
     return number_of_inserts;
 }
 
+fn getPageArray(page_path: &str) -> Vec<Mob_Page>
+{
+    let mut mob_body_opt = isahc::get(page_path);
+    if mob_body_opt.is_err()
+    {
+        println!("Retry on error {:?}", mob_body_opt.err());
+        mob_body_opt = isahc::get(page_path);
+    }
+    
+    let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
+    
+    let offset_begin = mob_body_opt.find("<h1>");
+    if offset_begin.is_none() {
+        println!("[ERROR] Probably non-mob page: {}", page_path);
+        panic!();
+    }
+    
+    let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
+    
+    let offset_end = begin_mob.find("<!--").unwrap();
+    let mob_page_tmp = begin_mob.get(..offset_end);
+    if mob_page_tmp.is_none() { println!("Could not do shit. Not a mob?"); panic!(); }
+    
+    let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\">", "</div>");
+    let mut mob_page = mob_page_tmp.as_str();
+    
+    //NOTE: Let's try extracting entire tag blocks to parse the mob data
+    let mut num_pages = 1;
+    let (mut page_one, maybe_next) = get_mob_page(mob_page);
+    
+    let mut pages = Vec::new();
+    pages.push(page_one);
+    
+    let mut page_two: Mob_Page;
+    if maybe_next.len() > 3 {
+        let maybe_next_tmp = clear_tag(maybe_next, "<div class=\"toccolours mw-collapsible-content\">", "</div>");
+        let mut maybe_next = maybe_next_tmp.as_str();
+        
+        (page_two, _) = get_mob_page(maybe_next);
+        pages.push(page_two);
+    }
+    
+    return pages;
+}
+
 fn getArrayOfPaths(database_path: &str) -> Vec<String>
 {
     let mut body = isahc::get(database_path).unwrap().text().unwrap();
@@ -1026,34 +1071,6 @@ fn main() -> Result<(), isahc::Error> {
     return Ok(());
     */
     
-    /*
-    let mut body = isahc::get("https://golarion.altervista.org/wiki/Database_Mostri")?.text()?;
-    
-    let offset  = body.find("wiki_table_filter").unwrap();
-    let slice_1 = body.get((offset - 11)..).unwrap();
-    
-    let offset_end = slice_1.find("</table>").unwrap();
-    let slice_of_page = slice_1.get(..(offset_end+8));
-    
-    let base_url = "https://golarion.altervista.org";
-    let mut array_of_paths = vec![];
-    
-    let mut next_slice_index = slice_of_page.unwrap().find("href=");
-    let mut next_slice = slice_of_page;
-    while next_slice_index.is_some() && next_slice.is_some()
-    {
-        next_slice = next_slice.unwrap().get((next_slice_index.unwrap() + 1)..);
-        if next_slice.is_none() { println!("[ERROR]"); return Ok(()); }
-        
-        let page_path   = get_path_from_slice(next_slice.unwrap());
-        if page_path.is_some() {
-            let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
-            array_of_paths.push(s_to_push);
-        }
-        
-        next_slice_index = next_slice.unwrap().find("href=");
-    }
-    */
     let mut buf_context = Buffer_Context {
         string_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
         number_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
@@ -1089,65 +1106,7 @@ fn main() -> Result<(), isahc::Error> {
         //if((file_idx % 100) == 0) { println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]); }
         println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]);
         
-        //thread::sleep_ms(2000);
-        
-        //let mob_body_opt = client.get(&array_of_paths[file_idx]).send()?.text()?;
-        /*
-        let mut mob_body_opt_send = reqwest::blocking::get(&array_of_paths[file_idx]);
-        let maxRetries = 5;
-        let mut retries    = 1;
-        while(mob_body_opt_send.is_err()) //NOTE: Gonna assume is the bullshit 10054 ConnectionReset
-        {
-            if (retries >= maxRetries) { println!("Fuck me too many retries"); return Ok(()); }
-            
-            println!("Retrying after sleeping {} seconds", 2*retries);
-            thread::sleep_ms(2000*retries);
-            mob_body_opt_send = reqwest::blocking::get(&array_of_paths[file_idx]);
-            retries += 1;
-        }
-        
-        let mob_body_opt = mob_body_opt_send.unwrap().text()?;
-        */
-        
-        let mut mob_body_opt = isahc::get(&array_of_paths[file_idx]);
-        if mob_body_opt.is_err()
-        {
-            println!("Retry on error {:?}", mob_body_opt.err());
-            mob_body_opt = isahc::get(&array_of_paths[file_idx]);
-        }
-        
-        let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
-        
-        let offset_begin = mob_body_opt.find("<h1>");
-        if offset_begin.is_none() {
-            println!("[ERROR] Probably non-mob page: {}", array_of_paths[file_idx]);
-            return Ok(());
-        }
-        
-        let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
-        
-        let offset_end = begin_mob.find("<!--").unwrap();
-        let mob_page_tmp = begin_mob.get(..offset_end);
-        if mob_page_tmp.is_none() { println!("Could not do shit. Not a mob?"); return Ok(()); }
-        
-        let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\">", "</div>");
-        let mut mob_page = mob_page_tmp.as_str();
-        
-        //NOTE: Let's try extracting entire tag blocks to parse the mob data
-        let mut num_pages = 1;
-        let (mut page_one, maybe_next) = get_mob_page(mob_page);
-        
-        let mut pages = Vec::new();
-        pages.push(page_one);
-        
-        let mut page_two: Mob_Page;
-        if maybe_next.len() > 3 {
-            let maybe_next_tmp = clear_tag(maybe_next, "<div class=\"toccolours mw-collapsible-content\">", "</div>");
-            let mut maybe_next = maybe_next_tmp.as_str();
-            
-            (page_two, _) = get_mob_page(maybe_next);
-            pages.push(page_two);
-        }
+        let mut pages = getPageArray(&array_of_paths[file_idx]);
         
         for mut page in pages
         {
