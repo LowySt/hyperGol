@@ -2,6 +2,9 @@
 
 use isahc::prelude::*;
 
+use futures::try_join;
+use futures::join;
+use futures::executor::block_on;
 use std::time::Instant;
 use std::thread;
 use std::fs::File;
@@ -12,6 +15,19 @@ use bytebuffer::ByteBuffer;
 use widestring::Utf32String;
 use byte_slice_cast::*;
 use byteorder::{ByteOrder, LittleEndian};
+/*
+Current Time ~620 seconds for whole thing
+
+For 100 Mobs + 100 NPCs
+Total Mob Page Array Time:     15 seconds
+    Total Single Mob Page Time:     0 seconds
+  Total Get Page Time:           15 seconds
+  Total Find Pieces Time:         0 seconds
+Total Mob Create Entity Time:   0 seconds
+Total NPC Page Array Time:     15 seconds
+Total Single NPC Page Time:     0 seconds
+Total NPC Create Entity Time:   0 seconds
+*/
 
 static BLACKLIST: [&str; 113] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria"];
 
@@ -1547,8 +1563,13 @@ fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> u
     return number_of_inserts;
 }
 
-fn get_mob_page_array(page_path: &str) -> Vec<Mob_Page>
+static mut get_page_time: u128 = 0u128;
+static mut find_pieces_time: u128 = 0u128;
+
+fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
 {
+    /*
+let get_page_now = Instant::now();
     let mut mob_body_opt = isahc::get(page_path);
     if mob_body_opt.is_err()
     {
@@ -1556,7 +1577,12 @@ fn get_mob_page_array(page_path: &str) -> Vec<Mob_Page>
         mob_body_opt = isahc::get(page_path);
     }
     
+    unsafe { get_page_time += get_page_now.elapsed().as_millis(); };
+    
     let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
+    */
+    
+    let find_pieces_now = Instant::now();
     
     let offset_begin = mob_body_opt.find("<h1>");
     if offset_begin.is_none() {
@@ -1571,6 +1597,9 @@ fn get_mob_page_array(page_path: &str) -> Vec<Mob_Page>
     if mob_page_tmp.is_none() { println!("Could not do shit. Not a mob?"); panic!(); }
     
     let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
+    
+    unsafe { find_pieces_time += find_pieces_now.elapsed().as_millis(); };
+    
     let mut mob_page = mob_page_tmp.as_str();
     
     //NOTE: Let's try extracting entire tag blocks to parse the mob data
@@ -1592,10 +1621,10 @@ fn get_mob_page_array(page_path: &str) -> Vec<Mob_Page>
     return pages;
 }
 
-fn get_npc_page_array(page_path: &str) -> Vec<NPC_Page>
+fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
 {
     let mut has_two_pages = false;
-    
+    /*
     let mut mob_body_opt = isahc::get(page_path);
     if mob_body_opt.is_err()
     {
@@ -1604,6 +1633,7 @@ fn get_npc_page_array(page_path: &str) -> Vec<NPC_Page>
     }
     
     let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
+    */
     
     let offset_begin = mob_body_opt.find("<h1>");
     if offset_begin.is_none() {
@@ -1690,6 +1720,84 @@ fn getArrayOfPaths(database_path: &str) -> Vec<String>
     return array_of_paths;
 }
 
+fn get_some_pages(section_len: usize, paths: &[String], raw_pages: &mut [String])
+{
+    let mut slice_idx = 0;
+    while slice_idx < section_len
+    {
+        let body = isahc::get(&paths[slice_idx]);
+        if body.is_err() { continue; }
+        
+        let body_text = body.unwrap().text();
+        if body_text.is_err() { continue; }
+        
+        raw_pages[slice_idx] = body_text.unwrap();
+        slice_idx += 1;
+    }
+}
+
+fn get_all_raw_pages(paths: &[String]) -> Vec<String>
+{
+    let mut raw_pages = Vec::with_capacity(paths.len());
+    raw_pages.resize(paths.len(), String::new());
+    
+    let remainder   = paths.len() % 8;
+    let section_len = paths.len() / 8;
+    
+    
+    let (paths_1, paths_rest) = paths.split_at(section_len);
+    let (mut raw_pages_1, mut raw_pages_rest) = raw_pages.as_mut_slice().split_at_mut(section_len);
+    
+    let (paths_2, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_2, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_3, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_3, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_4, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_4, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_5, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_5, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_6, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_6, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_7, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_7, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_8, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_8, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    thread::scope(|s|
+                  {
+                      s.spawn(move || { get_some_pages(section_len, paths_1, raw_pages_1) });
+                      s.spawn(move || { get_some_pages(section_len, paths_2, raw_pages_2) });
+                      s.spawn(move || { get_some_pages(section_len, paths_3, raw_pages_3) });
+                      s.spawn(move || { get_some_pages(section_len, paths_4, raw_pages_4) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_5, raw_pages_5) });
+                      s.spawn(move || { get_some_pages(section_len, paths_6, raw_pages_6) });
+                      s.spawn(move || { get_some_pages(section_len, paths_7, raw_pages_7) });
+                      s.spawn(move || { get_some_pages(section_len, paths_8, raw_pages_8) });
+                  });
+    
+    let mut file_idx = paths.len()-remainder;
+    while file_idx < paths.len()
+    {
+        let body = isahc::get(&paths[file_idx]);
+        if body.is_err() { continue; }
+        
+        let body_text = body.unwrap().text();
+        if body_text.is_err() { continue; }
+        
+        raw_pages[file_idx] = body_text.unwrap();
+        file_idx += 1;
+    }
+    
+    return raw_pages;
+}
+
 static mut total_single_mob_page_time: u128 = 0u128;
 static mut total_single_npc_page_time: u128 = 0u128;
 
@@ -1698,6 +1806,8 @@ fn main() -> Result<(), isahc::Error> {
     
     let now = Instant::now();
     
+    let mut total_mob_get_pages_time    = 0u128;
+    let mut total_npc_get_pages_time    = 0u128;
     let mut total_mob_page_array_time   = 0u128;
     let mut total_mob_create_entry_time = 0u128;
     let mut total_npc_page_array_time   = 0u128;
@@ -1734,14 +1844,15 @@ fn main() -> Result<(), isahc::Error> {
     let mut mob_entries_vec = Vec::new();
     let mut npc_entries_vec = Vec::new();
     
-    let mut total_size : usize = 0;
+    let garpm_now = Instant::now();
+    let mut raw_page_vec = get_all_raw_pages(&array_of_paths);
+    total_mob_get_pages_time += garpm_now.elapsed().as_millis();
     
+    println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
     {
-        println!("IDX: {}, {}", file_idx, array_of_paths[file_idx]);
-        
         let mpa_now = Instant::now();
-        let mut pages = get_mob_page_array(&array_of_paths[file_idx]);
+        let mut pages = get_mob_page_array(&raw_page_vec[file_idx], &array_of_paths[file_idx]);
         total_mob_page_array_time += mpa_now.elapsed().as_millis();
         
         for mut page in pages
@@ -1752,14 +1863,17 @@ fn main() -> Result<(), isahc::Error> {
             total_mob_create_entry_time += mce_now.elapsed().as_millis();
         }
     }
+    println!("End Mobs");
     
+    let garpn_now = Instant::now();
+    raw_page_vec = get_all_raw_pages(&array_of_npc_paths);
+    total_npc_get_pages_time += garpn_now.elapsed().as_millis();
     
+    println!("Start NPCs");
     for file_idx in 0..array_of_npc_paths.len()
     {
-        println!("IDX: {}, {}", file_idx, array_of_npc_paths[file_idx]);
-        
         let npa_now = Instant::now();
-        let mut pages = get_npc_page_array(&array_of_npc_paths[file_idx]);
+        let mut pages = get_npc_page_array(&raw_page_vec[file_idx], &array_of_npc_paths[file_idx]);
         total_npc_page_array_time += npa_now.elapsed().as_millis();
         
         for mut page in pages
@@ -1770,6 +1884,9 @@ fn main() -> Result<(), isahc::Error> {
             total_npc_create_entry_time += nce_now.elapsed().as_millis();
         }
     }
+    println!("End NPCs");
+    
+    let mut total_size : usize = 0;
     
     total_size += buf_context.string_buffer.len();
     total_size += buf_context.number_buffer.len();
@@ -2000,9 +2117,14 @@ fn main() -> Result<(), isahc::Error> {
     }
     
     
+    println!("Total Mob Get Pages Time:     {} seconds", total_mob_get_pages_time / 1000);
     println!("Total Mob Page Array Time:    {} seconds", total_mob_page_array_time / 1000);
-    unsafe { println!("Total Single Mob Page Time:   {} seconds", total_single_mob_page_time / 1000); };
+    unsafe { println!("  Total Single Mob Page Time: {} seconds", total_single_mob_page_time / 1000); };
+    unsafe { println!("  Total Get Page Time: {} seconds", get_page_time / 1000); };
+    unsafe { println!("  Total Find Pieces Time: {} seconds", find_pieces_time / 1000); };
     println!("Total Mob Create Entity Time: {} seconds", total_mob_create_entry_time / 1000);
+    
+    println!("Total NPC Get Pages Time:     {} seconds", total_npc_get_pages_time / 1000);
     println!("Total NPC Page Array Time:    {} seconds", total_npc_page_array_time / 1000);
     unsafe { println!("Total Single NPC Page Time:   {} seconds", total_single_npc_page_time / 1000); };
     println!("Total NPC Create Entity Time: {} seconds", total_npc_create_entry_time / 1000);
