@@ -1741,9 +1741,10 @@ fn get_all_raw_pages(paths: &[String]) -> Vec<String>
     let mut raw_pages = Vec::with_capacity(paths.len());
     raw_pages.resize(paths.len(), String::new());
     
-    let remainder   = paths.len() % 8;
-    let section_len = paths.len() / 8;
+    static NUM_THREADS: usize = 32;
     
+    let remainder   = paths.len() % NUM_THREADS;
+    let section_len = paths.len() / NUM_THREADS;
     
     let (paths_1, paths_rest) = paths.split_at(section_len);
     let (mut raw_pages_1, mut raw_pages_rest) = raw_pages.as_mut_slice().split_at_mut(section_len);
@@ -1769,6 +1770,78 @@ fn get_all_raw_pages(paths: &[String]) -> Vec<String>
     let (paths_8, paths_rest) = paths_rest.split_at(section_len);
     let (mut raw_pages_8, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
     
+    let (paths_9, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_9, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_10, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_10, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_11, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_11, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_12, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_12, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_13, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_13, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_14, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_14, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_15, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_15, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_16, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_16, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_17, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_17, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_18, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_18, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_19, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_19, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_20, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_20, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_21, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_21, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_22, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_22, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_23, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_23, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_24, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_24, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_25, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_25, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_26, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_26, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_27, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_27, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_28, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_28, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_29, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_29, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_30, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_30, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_31, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_31, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
+    let (paths_32, paths_rest) = paths_rest.split_at(section_len);
+    let (mut raw_pages_32, mut raw_pages_rest) = raw_pages_rest.split_at_mut(section_len);
+    
     thread::scope(|s|
                   {
                       s.spawn(move || { get_some_pages(section_len, paths_1, raw_pages_1) });
@@ -1780,6 +1853,36 @@ fn get_all_raw_pages(paths: &[String]) -> Vec<String>
                       s.spawn(move || { get_some_pages(section_len, paths_6, raw_pages_6) });
                       s.spawn(move || { get_some_pages(section_len, paths_7, raw_pages_7) });
                       s.spawn(move || { get_some_pages(section_len, paths_8, raw_pages_8) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_9, raw_pages_9) });
+                      s.spawn(move || { get_some_pages(section_len, paths_10, raw_pages_10) });
+                      s.spawn(move || { get_some_pages(section_len, paths_11, raw_pages_11) });
+                      s.spawn(move || { get_some_pages(section_len, paths_12, raw_pages_12) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_13, raw_pages_13) });
+                      s.spawn(move || { get_some_pages(section_len, paths_14, raw_pages_14) });
+                      s.spawn(move || { get_some_pages(section_len, paths_15, raw_pages_15) });
+                      s.spawn(move || { get_some_pages(section_len, paths_16, raw_pages_16) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_17, raw_pages_17) });
+                      s.spawn(move || { get_some_pages(section_len, paths_18, raw_pages_18) });
+                      s.spawn(move || { get_some_pages(section_len, paths_19, raw_pages_19) });
+                      s.spawn(move || { get_some_pages(section_len, paths_20, raw_pages_20) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_21, raw_pages_21) });
+                      s.spawn(move || { get_some_pages(section_len, paths_22, raw_pages_22) });
+                      s.spawn(move || { get_some_pages(section_len, paths_23, raw_pages_23) });
+                      s.spawn(move || { get_some_pages(section_len, paths_24, raw_pages_24) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_25, raw_pages_25) });
+                      s.spawn(move || { get_some_pages(section_len, paths_26, raw_pages_26) });
+                      s.spawn(move || { get_some_pages(section_len, paths_27, raw_pages_27) });
+                      s.spawn(move || { get_some_pages(section_len, paths_28, raw_pages_28) });
+                      
+                      s.spawn(move || { get_some_pages(section_len, paths_29, raw_pages_29) });
+                      s.spawn(move || { get_some_pages(section_len, paths_30, raw_pages_30) });
+                      s.spawn(move || { get_some_pages(section_len, paths_31, raw_pages_31) });
+                      s.spawn(move || { get_some_pages(section_len, paths_32, raw_pages_32) });
                   });
     
     let mut file_idx = paths.len()-remainder;
