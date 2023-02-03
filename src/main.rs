@@ -53,6 +53,15 @@ BufferMob Entry Time:         10 seconds
 Total NPC Get Pages Time:      7 seconds
 Total NPC Create Entity Time:  1 seconds
 
+Final Time with everything on CachedIndex, Concurrenr Requests
+Elapsed:                      34014 ms
+
+Total Mob Get Pages Time:     24224 ms
+Total Mob Create Entity Time:     0 ms
+Prepare Mob Entry Time:           0 ms
+BufferMob Entry Time:             0 ms
+Total NPC Get Pages Time:      6323 ms
+Total NPC Create Entity Time:     1 ms
 */
 
 static BLACKLIST: [&str; 113] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria"];
@@ -331,28 +340,28 @@ fn get_npc_page(orig_npc_page: &str) -> NPC_Page
 
 struct Buffer_Context
 {
-    string_buffer         : ByteBuffer,
-    number_buffer         : ByteBuffer,
-    name_buffer           : ByteBuffer,
-    gs_buffer             : ByteBuffer,
-    pe_buffer             : ByteBuffer,
-    alignment_buffer      : ByteBuffer,
-    types_buffer          : ByteBuffer,
-    subtypes_buffer       : ByteBuffer,
-    archetypes_buffer     : ByteBuffer,
-    sizes_buffer          : ByteBuffer,
-    senses_buffer         : ByteBuffer,
-    auras_buffer          : ByteBuffer,
-    immunities_buffer     : ByteBuffer,
-    resistances_buffer    : ByteBuffer,
-    weaknesses_buffer     : ByteBuffer,
-    special_attack_buffer : ByteBuffer,
-    spells_buffer         : ByteBuffer,
-    talents_buffer        : ByteBuffer,
-    skills_buffer         : ByteBuffer,
-    languages_buffer      : ByteBuffer,
-    specials_buffer       : ByteBuffer,
-    environment_buffer    : ByteBuffer,
+    string         : ByteBuffer,
+    number         : ByteBuffer,
+    name           : ByteBuffer,
+    gs             : ByteBuffer,
+    pe             : ByteBuffer,
+    alignment      : ByteBuffer,
+    types          : ByteBuffer,
+    subtypes       : ByteBuffer,
+    archetypes     : ByteBuffer,
+    sizes          : ByteBuffer,
+    senses         : ByteBuffer,
+    auras          : ByteBuffer,
+    immunities     : ByteBuffer,
+    resistances    : ByteBuffer,
+    weaknesses     : ByteBuffer,
+    special_attack : ByteBuffer,
+    spells         : ByteBuffer,
+    talents        : ByteBuffer,
+    skills         : ByteBuffer,
+    languages      : ByteBuffer,
+    specials       : ByteBuffer,
+    environment    : ByteBuffer,
 }
 
 #[derive(Debug)]
@@ -416,8 +425,8 @@ struct Mob_Entry
 static mut create_mob_entry_prepare_time: u128 = 0u128;
 static mut create_mob_entry_buffer_time: u128  = 0u128;
 
-fn create_mob_entry(cache: &mut VectorCache, 
-                    buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Mob_Entry
+fn create_mob_entry(cache: &mut VectorCache,
+                    bufs: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Mob_Entry
 {
     //NOTE:Profiliing -------------
     let cme_now = Instant::now();
@@ -652,38 +661,40 @@ fn create_mob_entry(cache: &mut VectorCache,
     
     
     //Header
-    let name_idx = add_entry_if_missing_vec(&mut cache.names, &mut buf_context.name_buffer, head_arr[0]);
-    let gs_idx   = add_entry_if_missing(&mut buf_context.gs_buffer, head_arr[1]);
-    let pe_idx   = add_entry_if_missing(&mut buf_context.pe_buffer, head_arr[2]);
+    let name_idx = add_entry_if_missing(&mut cache.names, &mut bufs.name, head_arr[0]);
+    let gs_idx   = add_entry_if_missing(&mut cache.gs, &mut bufs.gs, head_arr[1]);
+    let pe_idx   = add_entry_if_missing(&mut cache.pe, &mut bufs.pe, head_arr[2]);
     
     //Class Info
     let mut subtypes_idx = [0u16; 8];
     let mut arch_idx     = [0u16; 4];
     
-    let origin_idx     = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.origin);
-    let short_desc_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, class_arr[0]);
-    let align_idx      = add_entry_if_missing(&mut buf_context.alignment_buffer, class_arr[1]);
-    let type_idx       = add_entry_if_missing(&mut buf_context.types_buffer, class_arr[2]);
+    let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
+    let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
+    let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
     for s in 0..subtypes_count
-    { subtypes_idx[s]  = add_entry_if_missing(&mut buf_context.subtypes_buffer, class_arr[3+s]); }
+    { subtypes_idx[s]  = add_entry_if_missing(&mut cache.subtypes, &mut bufs.subtypes, class_arr[3+s]); }
     
     for arch in 0..arch_count
-    { arch_idx[arch]   = add_entry_if_missing(&mut buf_context.archetypes_buffer, class_arr[4+subtypes_off+arch]); }
+    { arch_idx[arch]   = add_entry_if_missing(&mut cache.archetypes, &mut bufs.archetypes, class_arr[4+subtypes_off+arch]); }
     
-    let size_idx       = add_entry_if_missing(&mut buf_context.sizes_buffer, class_arr[5+arch_off]);
+    let size_idx       = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, class_arr[5+arch_off]);
     
     //Misc
     let mut senses_idx = [0u16; 8];
     
-    let init_idx       = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, misc_arr[0]);
+    let init_idx       = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, misc_arr[0]);
     
     for s in 0..senses_count
-    { senses_idx[s]    = add_entry_if_missing(&mut buf_context.senses_buffer, misc_arr[1+s]); }
+    { senses_idx[s]    = add_entry_if_missing(&mut cache.senses, &mut bufs.senses, misc_arr[1+s]); }
     
     let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
-    let perception_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, misc_arr[2+senses_off]);
-    let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[2+senses_off+perception_off]);
+    let perception_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, misc_arr[2+senses_off]);
+    
+    let aura_off = 2+senses_off+perception_off;
+    let aura_idx = add_entry_if_missing(&mut cache.auras, &mut bufs.auras, misc_arr[aura_off]);
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
@@ -691,82 +702,85 @@ fn create_mob_entry(cache: &mut VectorCache,
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
-    let ac_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[0]);
-    let pf_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[1]);
-    let st_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[2]);
-    let rd_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[3]);
-    let ri_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[4]);
+    let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
+    let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
+    let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);
+    let ri_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[4]);
     
     for i in 0..immunities_count
-    { immunities_idx[i]   = add_entry_if_missing(&mut buf_context.immunities_buffer, defense_arr[5+i]); }
+    { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
     for r in 0..res_count
-    { resistances_idx[r]  = add_entry_if_missing(&mut buf_context.resistances_buffer, defense_arr[6+res_offset+r]); }
+    {
+        let off = 6+res_offset+r;
+        resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
+    }
     
     let def_cap_off = 7 + weak_offset;
-    let defensive_cap_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[def_cap_off]);
+    let defensive_cap_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
     {
-        weaknesses_idx[w]   = add_entry_if_missing(&mut buf_context.weaknesses_buffer, defense_arr[8+weak_offset+w]);
+        let off = 8+weak_offset+w;
+        weaknesses_idx[w] = add_entry_if_missing(&mut cache.weaknesses,&mut bufs.weaknesses, defense_arr[off]);
     }
     
     //Attack
-    let speed_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[0]);
-    let melee_idx    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[1]);
-    let ranged_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[2]);
-    let spec_atk_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[3]);
-    let space_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[4]);
-    let reach_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[5]);
-    let psych_idx    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[6]);
-    let magics_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[7]);
-    let spells_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[8]);
+    let speed_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[0]);
+    let melee_idx    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[1]);
+    let ranged_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[2]);
+    let spec_atk_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[3]);
+    let space_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[4]);
+    let reach_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[5]);
+    let psych_idx    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[6]);
+    let magics_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[7]);
+    let spells_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[8]);
     
     //Stats
     let mut talents_idx = [0u16; 24];
     let mut skills_idx  = [0u16; 24];
     let mut lang_idx    = [0u16; 24];
     
-    let str_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[0]);
-    let dex_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[1]);
-    let con_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[2]);
-    let int_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[3]);
-    let wis_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[4]);
-    let cha_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[5]);
+    let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
+    let dex_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[1]);
+    let con_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[2]);
+    let int_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[3]);
+    let wis_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[4]);
+    let cha_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[5]);
     
-    let bab_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[6]);
-    let cmb_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[7]);
-    let cmd_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[8]);
+    let bab_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[6]);
+    let cmb_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[7]);
+    let cmd_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[8]);
     
     for t in 0..talent_count
-    { talents_idx[t] = add_entry_if_missing(&mut buf_context.talents_buffer, stats_arr[9+t]); }
+    { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
     for s in 0..skill_count
-    { skills_idx[s]  = add_entry_if_missing(&mut buf_context.skills_buffer, stats_arr[10+s+skill_off]); }
+    { skills_idx[s]  = add_entry_if_missing(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
     
     for l in 0..lang_count
-    { lang_idx[l]    = add_entry_if_missing(&mut buf_context.languages_buffer, stats_arr[11+l+lang_off]); }
+    { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
     
     let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
-    let racial_mods  = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
-    let spec_qual    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
+    let racial_mods  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[12+after_lang_off]);
+    let spec_qual    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[13+after_lang_off]);
     
     //All specials
     let mut specials_idx = [0u32; 24];
     for s in 0..specials_arr.len()
-    { specials_idx[s] = add_entry_if_missing_u32_vec(&mut cache.specials, &mut buf_context.specials_buffer, &specials_arr[s]); }
-    //println!("{:#?}", specials_idx);
+    { specials_idx[s] = add_entry_if_missing_u32(&mut cache.specials, &mut bufs.specials, &specials_arr[s]); }
     
     //Ecology
-    let env_idx      = add_entry_if_missing(&mut buf_context.environment_buffer, ecology_arr[0]);
-    let org_idx      = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, ecology_arr[1]);
-    let treasure_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, ecology_arr[2]);
+    let env_idx      = add_entry_if_missing(&mut cache.environment, &mut bufs.environment, ecology_arr[0]);
+    let org_idx      = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, ecology_arr[1]);
+    let treasure_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, ecology_arr[2]);
     
     //Desc
-    let desc_idx     = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.desc);
+    let desc_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.desc);
     
     //Source
-    let source_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.source);
+    let source_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.source);
     
     let mut entry = Mob_Entry {
         name: name_idx,
@@ -890,8 +904,8 @@ struct NPC_Entry
     lang       : [u16; 24],
 }
 
-fn create_npc_entry(cache: &mut Vec<CachedIndex<u32>>, 
-                    buf_context: &mut Buffer_Context, mut page: NPC_Page, file_idx: usize) -> NPC_Entry
+fn create_npc_entry(cache: &mut VectorCache,
+                    bufs: &mut Buffer_Context, mut page: NPC_Page, file_idx: usize) -> NPC_Entry
 {
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
@@ -1117,38 +1131,43 @@ fn create_npc_entry(cache: &mut Vec<CachedIndex<u32>>,
     // ----------------
     
     //Header
-    let name_idx = add_entry_if_missing(&mut buf_context.name_buffer, head_arr[0]);
-    let gs_idx   = add_entry_if_missing(&mut buf_context.gs_buffer, head_arr[1]);
-    let pe_idx   = add_entry_if_missing(&mut buf_context.pe_buffer, head_arr[2]);
+    let name_idx = add_entry_if_missing(&mut cache.names, &mut bufs.name, head_arr[0]);
+    let gs_idx   = add_entry_if_missing(&mut cache.gs, &mut bufs.gs, head_arr[1]);
+    let pe_idx   = add_entry_if_missing(&mut cache.pe, &mut bufs.pe, head_arr[2]);
     
     //Class Info
     let mut subtypes_idx = [0u16; 8];
     let mut arch_idx     = [0u16; 4];
     
-    let origin_idx     = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.origin);
-    let short_desc_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, class_arr[0]);
-    let align_idx      = add_entry_if_missing(&mut buf_context.alignment_buffer, class_arr[1]);
-    let type_idx       = add_entry_if_missing(&mut buf_context.types_buffer, class_arr[2]);
+    let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
+    let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
+    let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
     for s in 0..subtypes_count
-    { subtypes_idx[s]  = add_entry_if_missing(&mut buf_context.subtypes_buffer, class_arr[3+s]); }
+    { subtypes_idx[s]  = add_entry_if_missing(&mut cache.subtypes, &mut bufs.subtypes, class_arr[3+s]); }
     
     for arch in 0..arch_count
-    { arch_idx[arch]   = add_entry_if_missing(&mut buf_context.archetypes_buffer, class_arr[4+subtypes_off+arch]); }
+    { 
+        let off        = 4+subtypes_off+arch;
+        arch_idx[arch] = add_entry_if_missing(&mut cache.archetypes, &mut bufs.archetypes, class_arr[off]);
+    }
     
-    let size_idx       = add_entry_if_missing(&mut buf_context.sizes_buffer, class_arr[5+arch_off]);
+    let size_idx       = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, class_arr[5+arch_off]);
     
     //Misc
     let mut senses_idx = [0u16; 8];
     
-    let init_idx       = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[0]);
+    let init_idx       = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, misc_arr[0]);
     
     for s in 0..senses_count
-    { senses_idx[s]    = add_entry_if_missing(&mut buf_context.senses_buffer, misc_arr[1+s]); }
+    { senses_idx[s]    = add_entry_if_missing(&mut cache.senses, &mut bufs.senses, misc_arr[1+s]); }
     
     let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
-    let perception_idx = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[2+senses_off]);
-    let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[2+senses_off+perception_off]);
+    let perception_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, misc_arr[2+senses_off]);
+    
+    let aura_off = 2+senses_off+perception_off;
+    let aura_idx = add_entry_if_missing(&mut cache.auras, &mut bufs.auras, misc_arr[aura_off]);
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
@@ -1156,83 +1175,87 @@ fn create_npc_entry(cache: &mut Vec<CachedIndex<u32>>,
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
-    let ac_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[0]);
-    let pf_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[1]);
-    let st_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[2]);
-    let rd_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[3]);
-    let ri_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[4]);
+    let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
+    let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
+    let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);
+    let ri_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[4]);
     
     for i in 0..immunities_count
-    { immunities_idx[i]   = add_entry_if_missing(&mut buf_context.immunities_buffer, defense_arr[5+i]); }
+    { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
     for r in 0..res_count
-    { resistances_idx[r]  = add_entry_if_missing(&mut buf_context.resistances_buffer, defense_arr[6+res_offset+r]); }
+    {
+        let off = 6+res_offset+r;
+        resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
+    }
     
     let def_cap_off = 7 + weak_offset;
-    let defensive_cap_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[def_cap_off]);
+    let defensive_cap_idx  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
     {
-        weaknesses_idx[w]   = add_entry_if_missing(&mut buf_context.weaknesses_buffer, defense_arr[8+weak_offset+w]);
+        let off = 8+weak_offset+w;
+        weaknesses_idx[w]  = add_entry_if_missing(&mut cache.weaknesses, &mut bufs.weaknesses, defense_arr[off]);
     }
     
     //Attack
-    let speed_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[0]);
-    let melee_idx    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[1]);
-    let ranged_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[2]);
-    let spec_atk_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[3]);
-    let space_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[4]);
-    let reach_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[5]);
-    let psych_idx    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[6]);
-    let magics_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[7]);
-    let spells_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[8]);
+    let speed_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[0]);
+    let melee_idx    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[1]);
+    let ranged_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[2]);
+    let spec_atk_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[3]);
+    let space_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[4]);
+    let reach_idx    = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, attack_arr[5]);
+    let psych_idx    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[6]);
+    let magics_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[7]);
+    let spells_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[8]);
     
     //Tactics
-    let tactics_idx  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.tactics);
+    let tactics_idx  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.tactics);
     
     //Stats
     let mut talents_idx = [0u16; 24];
     let mut skills_idx  = [0u16; 24];
     let mut lang_idx    = [0u16; 24];
     
-    let str_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[0]);
-    let dex_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[1]);
-    let con_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[2]);
-    let int_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[3]);
-    let wis_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[4]);
-    let cha_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[5]);
+    let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
+    let dex_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[1]);
+    let con_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[2]);
+    let int_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[3]);
+    let wis_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[4]);
+    let cha_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[5]);
     
-    let bab_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[6]);
-    let cmb_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[7]);
-    let cmd_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[8]);
+    let bab_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[6]);
+    let cmb_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[7]);
+    let cmd_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[8]);
     
     for t in 0..talent_count
-    { talents_idx[t] = add_entry_if_missing(&mut buf_context.talents_buffer, stats_arr[9+t]); }
+    { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
     for s in 0..skill_count
-    { skills_idx[s]  = add_entry_if_missing(&mut buf_context.skills_buffer, stats_arr[10+s+skill_off]); }
+    { skills_idx[s]  = add_entry_if_missing(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
     
     for l in 0..lang_count
-    { lang_idx[l]    = add_entry_if_missing(&mut buf_context.languages_buffer, stats_arr[11+l+lang_off]); }
+    { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
     
     let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
-    let racial_mods  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
-    let spec_qual    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
-    let given_equip  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[14+after_lang_off]);
-    let properties   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[15+after_lang_off]);;
-    let boons        = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[16+after_lang_off]);;
+    let racial_mods  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[12+after_lang_off]);
+    let spec_qual    = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[13+after_lang_off]);
+    let given_equip  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[14+after_lang_off]);
+    let properties   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[15+after_lang_off]);;
+    let boons        = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, stats_arr[16+after_lang_off]);;
     
     //All specials
     let mut specials_idx = [0u32; 24];
     for s in 0..specials_arr.len()
-    { specials_idx[s] = add_entry_if_missing_u32(&mut buf_context.specials_buffer, &specials_arr[s]); }
+    { specials_idx[s] = add_entry_if_missing_u32(&mut cache.specials, &mut bufs.specials, &specials_arr[s]); }
     //println!("{:#?}", specials_idx);
     
     //Desc
-    let desc_idx     = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.desc);
+    let desc_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.desc);
     
     //Source
-    let source_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.source);
+    let source_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.source);
     
     let mut entry = NPC_Entry {
         name: name_idx,
@@ -1411,56 +1434,6 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     return result_arr;
 }
 
-fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
-{
-    let replace_shit = entry_data_str.replace("\u{2012}", "-");
-    let replace_shit = replace_shit.replace("\u{200b}", "");
-    let replace_shit = replace_shit.replace("\u{2011}", "-");
-    let replace_shit = replace_shit.replace("\u{2013}", "-");
-    let replace_shit = replace_shit.replace("\u{2014}", "-");
-    let replace_shit = replace_shit.replace("\u{2018}", "'");
-    let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let replace_shit = replace_shit.replace("\u{201c}", "\"");
-    let replace_shit = replace_shit.replace("\u{201d}", "\"");
-    let replace_shit = replace_shit.replace("\u{2026}", "...");
-    let replace_shit = replace_shit.replace("\u{2800}", "");
-    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
-    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
-    let entry_data   = replace_shit.as_bytes();
-    let entry_len    = replace_shit.len();
-    
-    let mut cursor: usize = 0;
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u32; }
-    
-    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
-    buf.set_rpos(4);
-    while buf.get_rpos() < buf.len()
-    {
-        cursor         = buf.get_rpos();
-        let check_size = LittleEndian::read_u16(&buf.read_bytes(2));
-        let check_data = buf.read_bytes(check_size as usize);
-        
-        if (entry_data == check_data) == true {
-            return cursor as u32;
-        }
-    }
-    
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    return cursor as u32;
-}
-
 struct CachedIndex<T>
 {
     hash: u64,
@@ -1469,10 +1442,28 @@ struct CachedIndex<T>
 
 struct VectorCache
 {
-    strings:  Vec::<CachedIndex::<u32>>,
-    specials: Vec::<CachedIndex::<u32>>,
-    numbers:  Vec::<CachedIndex::<u16>>,
-    names:    Vec::<CachedIndex::<u16>>,
+    strings:     Vec::<CachedIndex::<u32>>,
+    numbers:     Vec::<CachedIndex::<u16>>,
+    names:       Vec::<CachedIndex::<u16>>, //TODO We are gonna surpass 16bits veery soon!
+    gs:          Vec::<CachedIndex::<u16>>,
+    pe:          Vec::<CachedIndex::<u16>>,
+    alignment:   Vec::<CachedIndex::<u16>>,
+    types:       Vec::<CachedIndex::<u16>>,
+    subtypes:    Vec::<CachedIndex::<u16>>,
+    archetypes:  Vec::<CachedIndex::<u16>>,
+    sizes:       Vec::<CachedIndex::<u16>>,
+    senses:      Vec::<CachedIndex::<u16>>,
+    auras:       Vec::<CachedIndex::<u16>>,
+    immunities:  Vec::<CachedIndex::<u16>>,
+    resistances: Vec::<CachedIndex::<u16>>,
+    weaknesses:  Vec::<CachedIndex::<u16>>,
+    special:     Vec::<CachedIndex::<u16>>,
+    spells:      Vec::<CachedIndex::<u32>>,
+    talents:     Vec::<CachedIndex::<u16>>,
+    skills:      Vec::<CachedIndex::<u16>>,
+    languages:   Vec::<CachedIndex::<u16>>,
+    specials:    Vec::<CachedIndex::<u32>>,
+    environment: Vec::<CachedIndex::<u16>>,
 }
 
 impl VectorCache
@@ -1480,18 +1471,34 @@ impl VectorCache
     fn new(pre_alloc: usize) -> VectorCache
     {
         let result = VectorCache {
-            strings:  Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            specials: Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            numbers:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            names:    Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            strings:     Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
+            numbers:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            names:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            gs:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            pe:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            alignment:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            types:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            subtypes:    Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            archetypes:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            sizes:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            senses:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            auras:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            immunities:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            resistances: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            weaknesses:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            special:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            spells:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
+            talents:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            skills:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            languages:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            specials:    Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
+            environment: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
         };
         return result;
     }
 }
 
-
-//NOTETODO: Hashmap
-fn add_entry_if_missing_u32_vec(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
+fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
     let replace_shit = entry_data_str.replace("\u{2012}", "-");
     let replace_shit = replace_shit.replace("\u{200b}", "");
@@ -1538,58 +1545,7 @@ fn add_entry_if_missing_u32_vec(cache: &mut Vec<CachedIndex<u32>>, buf: &mut Byt
     
     return cursor as u32;
 }
-
-fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
-{
-    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
-    let replace_shit = replace_shit.replace("\u{200b}", "");
-    let replace_shit = replace_shit.replace("\u{2011}", "-");
-    let replace_shit = replace_shit.replace("\u{2013}", "-");
-    let replace_shit = replace_shit.replace("\u{2014}", "-");
-    let replace_shit = replace_shit.replace("\u{2018}", "'");
-    let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let replace_shit = replace_shit.replace("\u{201c}", "\"");
-    let replace_shit = replace_shit.replace("\u{201d}", "\"");
-    let replace_shit = replace_shit.replace("\u{2026}", "...");
-    let replace_shit = replace_shit.replace("\u{2800}", "");
-    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
-    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
-    let entry_data   = replace_shit.as_bytes();
-    let entry_len    = replace_shit.len();
-    
-    let mut cursor: usize = 0;
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
-    
-    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
-    buf.set_rpos(4);
-    while buf.get_rpos() < buf.len()
-    {
-        cursor         = buf.get_rpos();
-        let check_size = LittleEndian::read_u16(&buf.read_bytes(2));
-        let check_data = buf.read_bytes(check_size as usize);
-        
-        if (entry_data == check_data) == true {
-            return cursor as u16;
-        }
-    }
-    
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    return cursor as u16;
-}
-
-fn add_entry_if_missing_vec(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
     let replace_shit = replace_shit.replace("\u{200b}", "");
@@ -1636,74 +1592,6 @@ fn add_entry_if_missing_vec(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuf
     
     return cursor as u16;
 }
-
-/* NOTETODO: Let's try with byte strings
-fn add_entry(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
-{
-    let entry_data = entry_data_str.as_bytes();
-    let entry_len  = entry_data_str.len();
-    let entry_utf32 = Utf32String::from_str(entry_data_str);
-    
-    let mut cursor: usize = 0;
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
-    
-    
-    cursor = buf.get_wpos();
-    
-    //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = entry_utf32.as_slice().len()*4;
-    buf.write_u16(entry_bytes as u16);
-    buf.write_bytes(entry_utf32.as_slice().as_byte_slice());
-    
-    let write_cursor = buf.get_wpos();
-    buf.set_wpos(0);
-    buf.write_u32((buf.len() - 4) as u32);
-    buf.set_wpos(write_cursor);
-    
-    return cursor as u16;
-}
-
-fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
-{
-    let entry_data  = entry_data_str.as_bytes();
-    let entry_len   = entry_data_str.len();
-    let entry_utf32 = Utf32String::from_str(entry_data_str);
-    
-    let mut cursor: usize = 0;
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
-    
-    //NOTE: The first 4 bytes of the buffer represent the total length in bytes
-    buf.set_rpos(4);
-    while buf.get_rpos() < buf.len()
-    {
-        cursor         = buf.get_rpos();
-        let check_size = buf.read_u16();
-        let check_data = buf.read_bytes(check_size as usize);
-        
-        if (entry_utf32.as_slice().as_byte_slice() == check_data) == true {
-            return cursor as u16;
-        }
-    }
-    
-    cursor = buf.get_wpos();
-    
-    //NOTE we convert the string to u32 so we need the size to be 4 times larger
-    let entry_bytes = entry_utf32.as_slice().len()*4;
-    buf.write_u16(entry_bytes as u16);
-    buf.write_bytes(entry_utf32.as_slice().as_byte_slice());
-    
-    let write_cursor = buf.get_wpos();
-    buf.set_wpos(0);
-    buf.write_u32((buf.len() - 4) as u32);
-    buf.set_wpos(write_cursor);
-    
-    return cursor as u16;
-}
-*/
 
 fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> usize
 {
@@ -2059,28 +1947,28 @@ fn main() -> Result<(), isahc::Error> {
     let mut array_of_npc_paths = getArrayOfPaths("https://golarion.altervista.org/wiki/Database_PNG");
     
     let mut buf_context = Buffer_Context {
-        string_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
-        number_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
-        name_buffer           : ByteBuffer::from_bytes(&[0u8;4]),
-        gs_buffer             : ByteBuffer::from_bytes(&[0u8;4]),
-        pe_buffer             : ByteBuffer::from_bytes(&[0u8;4]),
-        alignment_buffer      : ByteBuffer::from_bytes(&[0u8;4]),
-        types_buffer          : ByteBuffer::from_bytes(&[0u8;4]),
-        subtypes_buffer       : ByteBuffer::from_bytes(&[0u8;4]),
-        archetypes_buffer     : ByteBuffer::from_bytes(&[0u8;4]),
-        sizes_buffer          : ByteBuffer::from_bytes(&[0u8;4]),
-        senses_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
-        auras_buffer          : ByteBuffer::from_bytes(&[0u8;4]),
-        immunities_buffer     : ByteBuffer::from_bytes(&[0u8;4]),
-        resistances_buffer    : ByteBuffer::from_bytes(&[0u8;4]),
-        weaknesses_buffer     : ByteBuffer::from_bytes(&[0u8;4]),
-        special_attack_buffer : ByteBuffer::from_bytes(&[0u8;4]),
-        spells_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
-        talents_buffer        : ByteBuffer::from_bytes(&[0u8;4]),
-        skills_buffer         : ByteBuffer::from_bytes(&[0u8;4]),
-        languages_buffer      : ByteBuffer::from_bytes(&[0u8;4]),
-        specials_buffer       : ByteBuffer::from_bytes(&[0u8;4]),
-        environment_buffer    : ByteBuffer::from_bytes(&[0u8;4]),
+        string         : ByteBuffer::from_bytes(&[0u8;4]),
+        number         : ByteBuffer::from_bytes(&[0u8;4]),
+        name           : ByteBuffer::from_bytes(&[0u8;4]),
+        gs             : ByteBuffer::from_bytes(&[0u8;4]),
+        pe             : ByteBuffer::from_bytes(&[0u8;4]),
+        alignment      : ByteBuffer::from_bytes(&[0u8;4]),
+        types          : ByteBuffer::from_bytes(&[0u8;4]),
+        subtypes       : ByteBuffer::from_bytes(&[0u8;4]),
+        archetypes     : ByteBuffer::from_bytes(&[0u8;4]),
+        sizes          : ByteBuffer::from_bytes(&[0u8;4]),
+        senses         : ByteBuffer::from_bytes(&[0u8;4]),
+        auras          : ByteBuffer::from_bytes(&[0u8;4]),
+        immunities     : ByteBuffer::from_bytes(&[0u8;4]),
+        resistances    : ByteBuffer::from_bytes(&[0u8;4]),
+        weaknesses     : ByteBuffer::from_bytes(&[0u8;4]),
+        special_attack : ByteBuffer::from_bytes(&[0u8;4]),
+        spells         : ByteBuffer::from_bytes(&[0u8;4]),
+        talents        : ByteBuffer::from_bytes(&[0u8;4]),
+        skills         : ByteBuffer::from_bytes(&[0u8;4]),
+        languages      : ByteBuffer::from_bytes(&[0u8;4]),
+        specials       : ByteBuffer::from_bytes(&[0u8;4]),
+        environment    : ByteBuffer::from_bytes(&[0u8;4]),
     };
     
     let mut mob_entries_vec = Vec::new();
@@ -2120,7 +2008,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut page in pages
         {
             let nce_now = Instant::now();
-            let entry = create_npc_entry(&mut vec_cache.strings, &mut buf_context, page, file_idx);
+            let entry = create_npc_entry(&mut vec_cache, &mut buf_context, page, file_idx);
             npc_entries_vec.push(entry);
             total_npc_create_entry_time += nce_now.elapsed().as_millis();
         }
@@ -2129,80 +2017,80 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_size : usize = 0;
     
-    total_size += buf_context.string_buffer.len();
-    total_size += buf_context.number_buffer.len();
-    total_size += buf_context.name_buffer.len();
-    total_size += buf_context.gs_buffer.len();
-    total_size += buf_context.pe_buffer.len();
-    total_size += buf_context.alignment_buffer.len();
-    total_size += buf_context.types_buffer.len();
-    total_size += buf_context.subtypes_buffer.len();
-    total_size += buf_context.archetypes_buffer.len();
-    total_size += buf_context.sizes_buffer.len();
-    total_size += buf_context.senses_buffer.len();
-    total_size += buf_context.auras_buffer.len();
-    total_size += buf_context.immunities_buffer.len();
-    total_size += buf_context.resistances_buffer.len();
-    total_size += buf_context.weaknesses_buffer.len();
-    total_size += buf_context.special_attack_buffer.len();
-    total_size += buf_context.spells_buffer.len();
-    total_size += buf_context.talents_buffer.len();
-    total_size += buf_context.skills_buffer.len();
-    total_size += buf_context.languages_buffer.len();
-    total_size += buf_context.environment_buffer.len();
-    total_size += buf_context.specials_buffer.len();
+    total_size += buf_context.string.len();
+    total_size += buf_context.number.len();
+    total_size += buf_context.name.len();
+    total_size += buf_context.gs.len();
+    total_size += buf_context.pe.len();
+    total_size += buf_context.alignment.len();
+    total_size += buf_context.types.len();
+    total_size += buf_context.subtypes.len();
+    total_size += buf_context.archetypes.len();
+    total_size += buf_context.sizes.len();
+    total_size += buf_context.senses.len();
+    total_size += buf_context.auras.len();
+    total_size += buf_context.immunities.len();
+    total_size += buf_context.resistances.len();
+    total_size += buf_context.weaknesses.len();
+    total_size += buf_context.special_attack.len();
+    total_size += buf_context.spells.len();
+    total_size += buf_context.talents.len();
+    total_size += buf_context.skills.len();
+    total_size += buf_context.languages.len();
+    total_size += buf_context.environment.len();
+    total_size += buf_context.specials.len();
     
     println!("Total Size of Buffers: {}", total_size);
     
-    println!("Strings:     {}", buf_context.string_buffer.len());
-    println!("Number:      {}", buf_context.number_buffer.len());
-    println!("Name:        {}", buf_context.name_buffer.len());
-    println!("gs:          {}", buf_context.gs_buffer.len());
-    println!("pe:          {}", buf_context.pe_buffer.len());
-    println!("alignment:   {}", buf_context.alignment_buffer.len());
-    println!("types:       {}", buf_context.types_buffer.len());
-    println!("subtypes:    {}", buf_context.subtypes_buffer.len());
-    println!("archetypes:  {}", buf_context.archetypes_buffer.len());
-    println!("sizes:       {}", buf_context.sizes_buffer.len());
-    println!("senses:      {}", buf_context.senses_buffer.len());
-    println!("auras:       {}", buf_context.auras_buffer.len());
-    println!("immunities:  {}", buf_context.immunities_buffer.len());
-    println!("resistances: {}", buf_context.resistances_buffer.len());
-    println!("weaknesses:  {}", buf_context.weaknesses_buffer.len());
-    println!("attack:      {}", buf_context.special_attack_buffer.len());
-    println!("spells:      {}", buf_context.spells_buffer.len());
-    println!("talents:     {}", buf_context.talents_buffer.len());
-    println!("skills:      {}", buf_context.skills_buffer.len());
-    println!("languages:   {}", buf_context.languages_buffer.len());
-    println!("environment: {}", buf_context.environment_buffer.len());
-    println!("specials:    {}", buf_context.specials_buffer.len());
+    println!("Strings:     {}", buf_context.string.len());
+    println!("Number:      {}", buf_context.number.len());
+    println!("Name:        {}", buf_context.name.len());
+    println!("gs:          {}", buf_context.gs.len());
+    println!("pe:          {}", buf_context.pe.len());
+    println!("alignment:   {}", buf_context.alignment.len());
+    println!("types:       {}", buf_context.types.len());
+    println!("subtypes:    {}", buf_context.subtypes.len());
+    println!("archetypes:  {}", buf_context.archetypes.len());
+    println!("sizes:       {}", buf_context.sizes.len());
+    println!("senses:      {}", buf_context.senses.len());
+    println!("auras:       {}", buf_context.auras.len());
+    println!("immunities:  {}", buf_context.immunities.len());
+    println!("resistances: {}", buf_context.resistances.len());
+    println!("weaknesses:  {}", buf_context.weaknesses.len());
+    println!("attack:      {}", buf_context.special_attack.len());
+    println!("spells:      {}", buf_context.spells.len());
+    println!("talents:     {}", buf_context.talents.len());
+    println!("skills:      {}", buf_context.skills.len());
+    println!("languages:   {}", buf_context.languages.len());
+    println!("environment: {}", buf_context.environment.len());
+    println!("specials:    {}", buf_context.specials.len());
     
     
     let mut result_file = File::create("Compendium")?;
     
     //NOTE: Write all string buffers
-    result_file.write_all(&buf_context.string_buffer.to_bytes());
-    result_file.write_all(&buf_context.number_buffer.to_bytes());
-    result_file.write_all(&buf_context.name_buffer.to_bytes());
-    result_file.write_all(&buf_context.gs_buffer.to_bytes());
-    result_file.write_all(&buf_context.pe_buffer.to_bytes());
-    result_file.write_all(&buf_context.alignment_buffer.to_bytes());
-    result_file.write_all(&buf_context.types_buffer.to_bytes());
-    result_file.write_all(&buf_context.subtypes_buffer.to_bytes());
-    result_file.write_all(&buf_context.archetypes_buffer.to_bytes());
-    result_file.write_all(&buf_context.sizes_buffer.to_bytes());
-    result_file.write_all(&buf_context.senses_buffer.to_bytes());
-    result_file.write_all(&buf_context.auras_buffer.to_bytes());
-    result_file.write_all(&buf_context.immunities_buffer.to_bytes());
-    result_file.write_all(&buf_context.resistances_buffer.to_bytes());
-    result_file.write_all(&buf_context.weaknesses_buffer.to_bytes());
-    result_file.write_all(&buf_context.special_attack_buffer.to_bytes());
-    result_file.write_all(&buf_context.spells_buffer.to_bytes());
-    result_file.write_all(&buf_context.talents_buffer.to_bytes());
-    result_file.write_all(&buf_context.skills_buffer.to_bytes());
-    result_file.write_all(&buf_context.languages_buffer.to_bytes());
-    result_file.write_all(&buf_context.environment_buffer.to_bytes());
-    result_file.write_all(&buf_context.specials_buffer.to_bytes());
+    result_file.write_all(&buf_context.string.to_bytes());
+    result_file.write_all(&buf_context.number.to_bytes());
+    result_file.write_all(&buf_context.name.to_bytes());
+    result_file.write_all(&buf_context.gs.to_bytes());
+    result_file.write_all(&buf_context.pe.to_bytes());
+    result_file.write_all(&buf_context.alignment.to_bytes());
+    result_file.write_all(&buf_context.types.to_bytes());
+    result_file.write_all(&buf_context.subtypes.to_bytes());
+    result_file.write_all(&buf_context.archetypes.to_bytes());
+    result_file.write_all(&buf_context.sizes.to_bytes());
+    result_file.write_all(&buf_context.senses.to_bytes());
+    result_file.write_all(&buf_context.auras.to_bytes());
+    result_file.write_all(&buf_context.immunities.to_bytes());
+    result_file.write_all(&buf_context.resistances.to_bytes());
+    result_file.write_all(&buf_context.weaknesses.to_bytes());
+    result_file.write_all(&buf_context.special_attack.to_bytes());
+    result_file.write_all(&buf_context.spells.to_bytes());
+    result_file.write_all(&buf_context.talents.to_bytes());
+    result_file.write_all(&buf_context.skills.to_bytes());
+    result_file.write_all(&buf_context.languages.to_bytes());
+    result_file.write_all(&buf_context.environment.to_bytes());
+    result_file.write_all(&buf_context.specials.to_bytes());
     
     //NOTE: Write Mob Entries
     let mob_vec_len = mob_entries_vec.len() as u32;
@@ -2358,17 +2246,15 @@ fn main() -> Result<(), isahc::Error> {
     }
     
     
-    println!("Total Mob Get Pages Time:     {} seconds", total_mob_get_pages_time / 1000);
-    println!("Total Mob Create Entity Time: {} seconds", total_mob_create_entry_time / 1000);
+    println!("Total Mob Get Pages Time:     {} ms", total_mob_get_pages_time);
+    println!("Total Mob Create Entity Time: {} ms", total_mob_create_entry_time);
     
-    unsafe { println!("Prepare Mob Entry Time: {} seconds", create_mob_entry_prepare_time / 1000); };
-    unsafe { println!("BufferMob Entry Time:   {} seconds", create_mob_entry_buffer_time / 1000); };
+    unsafe { println!("Prepare Mob Entry Time: {} ms", create_mob_entry_prepare_time); };
+    unsafe { println!("BufferMob Entry Time:   {} ms", create_mob_entry_buffer_time); };
     
-    println!("Total NPC Get Pages Time:     {} seconds", total_npc_get_pages_time / 1000);
-    println!("Total NPC Create Entity Time: {} seconds", total_npc_create_entry_time / 1000);
-    
-    let elapsed = now.elapsed();
-    println!("Elapsed:     {:.2?}", elapsed);
+    println!("Total NPC Get Pages Time:     {} ms", total_npc_get_pages_time);
+    println!("Total NPC Create Entity Time: {} ms", total_npc_create_entry_time);
+    println!("Elapsed:                      {} ms", now.elapsed().as_millis());
     
     Ok(())
 }
