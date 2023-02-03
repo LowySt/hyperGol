@@ -11,6 +11,9 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::collections::hash_map::DefaultHasher;
 use bytebuffer::ByteBuffer;
 use widestring::Utf32String;
 use byte_slice_cast::*;
@@ -27,6 +30,29 @@ Total Mob Create Entity Time:   0 seconds
 Total NPC Page Array Time:     15 seconds
 Total Single NPC Page Time:     0 seconds
 Total NPC Create Entity Time:   0 seconds
+
+
+
+All Mobs and NPCs with Concurrent Requests and CachedIndex on some things
+Elapsed:                      78 seconds
+
+Total Mob Get Pages Time:     27 seconds
+Total Mob Create Entity Time: 10 seconds
+Prepare Mob Entry Time:        0 seconds
+BufferMob Entry Time:         10 seconds
+Total NPC Get Pages Time:      5 seconds
+Total NPC Create Entity Time: 29 seconds
+
+Concurrent Requests and CachedIndex on all Mobs+NPCs strings
+Elapsed:                      48 seconds
+
+Total Mob Get Pages Time:     24 seconds
+Total Mob Create Entity Time: 10 seconds
+Prepare Mob Entry Time:        0 seconds
+BufferMob Entry Time:         10 seconds
+Total NPC Get Pages Time:      7 seconds
+Total NPC Create Entity Time:  1 seconds
+
 */
 
 static BLACKLIST: [&str; 113] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria"];
@@ -107,9 +133,6 @@ struct Mob_Page {
 
 fn get_mob_page(orig_mob_page: &str) -> (Mob_Page, &str)
 {
-    //NOTE: Profiling
-    let smp_now = Instant::now();
-    
     let mut mob_page = orig_mob_page;
     
     let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>".to_string(), "</h1>".to_string());
@@ -180,8 +203,6 @@ fn get_mob_page(orig_mob_page: &str) -> (Mob_Page, &str)
         defense: defense, attack: attack, stats: stats, special: specials, 
         ecology: ecology, desc: desc, source: source };
     
-    unsafe { total_single_mob_page_time += smp_now.elapsed().as_millis(); };
-    
     return (res, next.trim());
 }
 
@@ -203,9 +224,6 @@ struct NPC_Page {
 
 fn get_npc_page(orig_npc_page: &str) -> NPC_Page
 {
-    //NOTE: Profiling
-    let snp_now = Instant::now();
-    
     let mut npc_page = orig_npc_page;
     
     let (npc_header, next) = get_slice_inside_tags(npc_page, "<h1>".to_string(), "</h1>".to_string());
@@ -308,8 +326,6 @@ fn get_npc_page(orig_npc_page: &str) -> NPC_Page
         defense: defense, attack: attack, tactics: tactics, 
         stats: stats, special: specials, desc: desc, source: source };
     
-    unsafe { total_single_npc_page_time += snp_now.elapsed().as_millis(); };
-    
     return res;
 }
 
@@ -397,8 +413,16 @@ struct Mob_Entry
     env        : u16,
 }
 
-fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Mob_Entry
+static mut create_mob_entry_prepare_time: u128 = 0u128;
+static mut create_mob_entry_buffer_time: u128  = 0u128;
+
+fn create_mob_entry(cache: &mut VectorCache, 
+                    buf_context: &mut Buffer_Context, mut page: Mob_Page, file_idx: usize) -> Mob_Entry
 {
+    //NOTE:Profiliing -------------
+    let cme_now = Instant::now();
+    //-----------------------------
+    
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
     
@@ -611,12 +635,24 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     page.source = check_unwrap!(page.source.get(7..), file_idx, head_arr[0]).to_string();
     
     
+    
+    //NOTE:Profiliing ----------------------------------------------
+    unsafe { create_mob_entry_prepare_time += cme_now.elapsed().as_millis(); }
+    //--------------------------------------------------------------
+    
+    
     // ----------------
     //NOTE Start filling the buffers
     // ----------------
     
+    
+    //NOTE:Profiliing ----------------------------------------------
+    let cme_now = Instant::now();
+    //--------------------------------------------------------------
+    
+    
     //Header
-    let name_idx = add_entry_if_missing(&mut buf_context.name_buffer, head_arr[0]);
+    let name_idx = add_entry_if_missing_vec(&mut cache.names, &mut buf_context.name_buffer, head_arr[0]);
     let gs_idx   = add_entry_if_missing(&mut buf_context.gs_buffer, head_arr[1]);
     let pe_idx   = add_entry_if_missing(&mut buf_context.pe_buffer, head_arr[2]);
     
@@ -624,8 +660,8 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     let mut subtypes_idx = [0u16; 8];
     let mut arch_idx     = [0u16; 4];
     
-    let origin_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.origin);
-    let short_desc_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, class_arr[0]);
+    let origin_idx     = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.origin);
+    let short_desc_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, class_arr[0]);
     let align_idx      = add_entry_if_missing(&mut buf_context.alignment_buffer, class_arr[1]);
     let type_idx       = add_entry_if_missing(&mut buf_context.types_buffer, class_arr[2]);
     
@@ -640,13 +676,13 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     //Misc
     let mut senses_idx = [0u16; 8];
     
-    let init_idx       = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[0]);
+    let init_idx       = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, misc_arr[0]);
     
     for s in 0..senses_count
     { senses_idx[s]    = add_entry_if_missing(&mut buf_context.senses_buffer, misc_arr[1+s]); }
     
     let senses_off     = if senses_count > 0 { senses_count - 1 } else { 0 };
-    let perception_idx = add_entry_if_missing(&mut buf_context.number_buffer, misc_arr[2+senses_off]);
+    let perception_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, misc_arr[2+senses_off]);
     let aura_idx = add_entry_if_missing(&mut buf_context.auras_buffer, misc_arr[2+senses_off+perception_off]);
     
     //Defense
@@ -655,11 +691,11 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
-    let ac_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[0]);
-    let pf_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[1]);
-    let st_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[2]);
-    let rd_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[3]);
-    let ri_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[4]);
+    let ac_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[0]);
+    let pf_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[1]);
+    let st_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[2]);
+    let rd_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[3]);
+    let ri_idx            = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[4]);
     
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut buf_context.immunities_buffer, defense_arr[5+i]); }
@@ -668,7 +704,7 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     { resistances_idx[r]  = add_entry_if_missing(&mut buf_context.resistances_buffer, defense_arr[6+res_offset+r]); }
     
     let def_cap_off = 7 + weak_offset;
-    let defensive_cap_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[def_cap_off]);
+    let defensive_cap_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
     {
@@ -676,31 +712,31 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     }
     
     //Attack
-    let speed_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[0]);
-    let melee_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[1]);
-    let ranged_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[2]);
-    let spec_atk_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[3]);
-    let space_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[4]);
-    let reach_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[5]);
-    let psych_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[6]);
-    let magics_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[7]);
-    let spells_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[8]);
+    let speed_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[0]);
+    let melee_idx    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[1]);
+    let ranged_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[2]);
+    let spec_atk_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[3]);
+    let space_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[4]);
+    let reach_idx    = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, attack_arr[5]);
+    let psych_idx    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[6]);
+    let magics_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[7]);
+    let spells_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, attack_arr[8]);
     
     //Stats
     let mut talents_idx = [0u16; 24];
     let mut skills_idx  = [0u16; 24];
     let mut lang_idx    = [0u16; 24];
     
-    let str_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[0]);
-    let dex_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[1]);
-    let con_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[2]);
-    let int_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[3]);
-    let wis_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[4]);
-    let cha_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[5]);
+    let str_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[0]);
+    let dex_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[1]);
+    let con_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[2]);
+    let int_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[3]);
+    let wis_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[4]);
+    let cha_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[5]);
     
-    let bab_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[6]);
-    let cmb_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[7]);
-    let cmd_idx = add_entry_if_missing(&mut buf_context.number_buffer, stats_arr[8]);
+    let bab_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[6]);
+    let cmb_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[7]);
+    let cmd_idx = add_entry_if_missing_vec(&mut cache.numbers, &mut buf_context.number_buffer, stats_arr[8]);
     
     for t in 0..talent_count
     { talents_idx[t] = add_entry_if_missing(&mut buf_context.talents_buffer, stats_arr[9+t]); }
@@ -712,25 +748,25 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
     { lang_idx[l]    = add_entry_if_missing(&mut buf_context.languages_buffer, stats_arr[11+l+lang_off]); }
     
     let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
-    let racial_mods  = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
-    let spec_qual    = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
+    let racial_mods  = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
+    let spec_qual    = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
     
     //All specials
     let mut specials_idx = [0u32; 24];
     for s in 0..specials_arr.len()
-    { specials_idx[s] = add_entry_if_missing_u32(&mut buf_context.specials_buffer, &specials_arr[s]); }
+    { specials_idx[s] = add_entry_if_missing_u32_vec(&mut cache.specials, &mut buf_context.specials_buffer, &specials_arr[s]); }
     //println!("{:#?}", specials_idx);
     
     //Ecology
     let env_idx      = add_entry_if_missing(&mut buf_context.environment_buffer, ecology_arr[0]);
-    let org_idx      = add_entry_if_missing_u32(&mut buf_context.string_buffer, ecology_arr[1]);
-    let treasure_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, ecology_arr[2]);
+    let org_idx      = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, ecology_arr[1]);
+    let treasure_idx = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, ecology_arr[2]);
     
     //Desc
-    let desc_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.desc);
+    let desc_idx     = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.desc);
     
     //Source
-    let source_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.source);
+    let source_idx   = add_entry_if_missing_u32_vec(&mut cache.strings, &mut buf_context.string_buffer, &page.source);
     
     let mut entry = Mob_Entry {
         name: name_idx,
@@ -786,6 +822,10 @@ fn create_mob_entry(buf_context: &mut Buffer_Context, mut page: Mob_Page, file_i
         desc: desc_idx,
         source: source_idx,
     };
+    
+    //NOTE:Profiling -----------------------------------------------
+    unsafe { create_mob_entry_buffer_time += cme_now.elapsed().as_millis(); };
+    //--------------------------------------------------------------
     
     return entry;
 }
@@ -850,7 +890,8 @@ struct NPC_Entry
     lang       : [u16; 24],
 }
 
-fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_idx: usize) -> NPC_Entry
+fn create_npc_entry(cache: &mut Vec<CachedIndex<u32>>, 
+                    buf_context: &mut Buffer_Context, mut page: NPC_Page, file_idx: usize) -> NPC_Entry
 {
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
@@ -1084,8 +1125,8 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     let mut subtypes_idx = [0u16; 8];
     let mut arch_idx     = [0u16; 4];
     
-    let origin_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.origin);
-    let short_desc_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, class_arr[0]);
+    let origin_idx     = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.origin);
+    let short_desc_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, class_arr[0]);
     let align_idx      = add_entry_if_missing(&mut buf_context.alignment_buffer, class_arr[1]);
     let type_idx       = add_entry_if_missing(&mut buf_context.types_buffer, class_arr[2]);
     
@@ -1115,11 +1156,11 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
-    let ac_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[0]);
-    let pf_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[1]);
-    let st_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[2]);
-    let rd_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[3]);
-    let ri_idx            = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[4]);
+    let ac_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[0]);
+    let pf_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[1]);
+    let st_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[2]);
+    let rd_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[3]);
+    let ri_idx            = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[4]);
     
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut buf_context.immunities_buffer, defense_arr[5+i]); }
@@ -1128,7 +1169,7 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     { resistances_idx[r]  = add_entry_if_missing(&mut buf_context.resistances_buffer, defense_arr[6+res_offset+r]); }
     
     let def_cap_off = 7 + weak_offset;
-    let defensive_cap_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, defense_arr[def_cap_off]);
+    let defensive_cap_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, defense_arr[def_cap_off]);
     
     for w in 0..weak_count
     {
@@ -1137,17 +1178,17 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     
     //Attack
     let speed_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[0]);
-    let melee_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[1]);
-    let ranged_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[2]);
-    let spec_atk_idx = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[3]);
+    let melee_idx    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[1]);
+    let ranged_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[2]);
+    let spec_atk_idx = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[3]);
     let space_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[4]);
     let reach_idx    = add_entry_if_missing(&mut buf_context.number_buffer, attack_arr[5]);
-    let psych_idx    = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[6]);
-    let magics_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[7]);
-    let spells_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, attack_arr[8]);
+    let psych_idx    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[6]);
+    let magics_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[7]);
+    let spells_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, attack_arr[8]);
     
     //Tactics
-    let tactics_idx  = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.tactics);
+    let tactics_idx  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.tactics);
     
     //Stats
     let mut talents_idx = [0u16; 24];
@@ -1175,11 +1216,11 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     { lang_idx[l]    = add_entry_if_missing(&mut buf_context.languages_buffer, stats_arr[11+l+lang_off]); }
     
     let after_lang_off = if lang_count > 0 { (lang_count - 1) + lang_off } else { lang_off };
-    let racial_mods  = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
-    let spec_qual    = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
-    let given_equip  = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[14+after_lang_off]);
-    let properties   = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[15+after_lang_off]);;
-    let boons        = add_entry_if_missing_u32(&mut buf_context.string_buffer, stats_arr[16+after_lang_off]);;
+    let racial_mods  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[12+after_lang_off]);
+    let spec_qual    = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[13+after_lang_off]);
+    let given_equip  = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[14+after_lang_off]);
+    let properties   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[15+after_lang_off]);;
+    let boons        = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, stats_arr[16+after_lang_off]);;
     
     //All specials
     let mut specials_idx = [0u32; 24];
@@ -1188,10 +1229,10 @@ fn create_npc_entry(buf_context: &mut Buffer_Context, mut page: NPC_Page, file_i
     //println!("{:#?}", specials_idx);
     
     //Desc
-    let desc_idx     = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.desc);
+    let desc_idx     = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.desc);
     
     //Source
-    let source_idx   = add_entry_if_missing_u32(&mut buf_context.string_buffer, &page.source);
+    let source_idx   = add_entry_if_missing_u32_vec(cache, &mut buf_context.string_buffer, &page.source);
     
     let mut entry = NPC_Entry {
         name: name_idx,
@@ -1351,7 +1392,7 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     
     for i in 0..until.len()
     {
-        (el, next)  = get_until(next, until[i]);
+        (el, next) = get_until(next, until[i]);
         
         if el == GLOBAL_NULL && missed_i == 99 { missed_i = i; }
         
@@ -1359,7 +1400,6 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
         else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
     }
     
-    //TODO: For some reason there's an extra empty push in attack_arr...
     let (last, _) = get_until(next, "");
     if missed_i == 99 { result_arr.push(last.trim()); }
     else
@@ -1371,7 +1411,6 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     return result_arr;
 }
 
-//NOTETODO: Let's try with byte strings
 fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
     let replace_shit = entry_data_str.replace("\u{2012}", "-");
@@ -1422,6 +1461,84 @@ fn add_entry_if_missing_u32(buf: &mut ByteBuffer, entry_data_str: &str) -> u32
     return cursor as u32;
 }
 
+struct CachedIndex<T>
+{
+    hash: u64,
+    cursor: T,
+}
+
+struct VectorCache
+{
+    strings:  Vec::<CachedIndex::<u32>>,
+    specials: Vec::<CachedIndex::<u32>>,
+    numbers:  Vec::<CachedIndex::<u16>>,
+    names:    Vec::<CachedIndex::<u16>>,
+}
+
+impl VectorCache
+{
+    fn new(pre_alloc: usize) -> VectorCache
+    {
+        let result = VectorCache {
+            strings:  Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
+            specials: Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
+            numbers:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            names:    Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+        };
+        return result;
+    }
+}
+
+
+//NOTETODO: Hashmap
+fn add_entry_if_missing_u32_vec(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
+{
+    let replace_shit = entry_data_str.replace("\u{2012}", "-");
+    let replace_shit = replace_shit.replace("\u{200b}", "");
+    let replace_shit = replace_shit.replace("\u{2011}", "-");
+    let replace_shit = replace_shit.replace("\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2014}", "-");
+    let replace_shit = replace_shit.replace("\u{2018}", "'");
+    let replace_shit = replace_shit.replace("\u{2019}", "'");
+    let replace_shit = replace_shit.replace("\u{201c}", "\"");
+    let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2026}", "...");
+    let replace_shit = replace_shit.replace("\u{2800}", "");
+    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
+    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
+    let entry_data   = replace_shit.as_bytes();
+    let entry_len    = replace_shit.len();
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return 0u32; }
+    
+    let mut hasher = DefaultHasher::new();
+    entry_data.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    for idx in 0..cache.len()
+    { 
+        if cache[idx].hash == hash { return cache[idx].cursor; }
+    }
+    
+    let mut cursor: usize = 0;
+    cursor = buf.get_wpos();
+    
+    buf.write_bytes([entry_len as u16].as_byte_slice());
+    buf.write_bytes(entry_data);
+    
+    let write_cursor = buf.get_wpos();
+    let new_buff_size = (buf.len() - 4) as u32;
+    buf.set_wpos(0);
+    buf.write_bytes([new_buff_size].as_byte_slice());
+    buf.set_wpos(write_cursor);
+    
+    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u32 };
+    cache.push(cached_index);
+    
+    return cursor as u32;
+}
+
 fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
@@ -1468,6 +1585,54 @@ fn add_entry_if_missing(buf: &mut ByteBuffer, entry_data_str: &str) -> u16
     buf.set_wpos(0);
     buf.write_bytes([new_buff_size].as_byte_slice());
     buf.set_wpos(write_cursor);
+    
+    return cursor as u16;
+}
+
+fn add_entry_if_missing_vec(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+{
+    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
+    let replace_shit = replace_shit.replace("\u{200b}", "");
+    let replace_shit = replace_shit.replace("\u{2011}", "-");
+    let replace_shit = replace_shit.replace("\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2014}", "-");
+    let replace_shit = replace_shit.replace("\u{2018}", "'");
+    let replace_shit = replace_shit.replace("\u{2019}", "'");
+    let replace_shit = replace_shit.replace("\u{201c}", "\"");
+    let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2026}", "...");
+    let replace_shit = replace_shit.replace("\u{2800}", "");
+    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
+    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
+    let entry_data   = replace_shit.as_bytes();
+    let entry_len    = replace_shit.len();
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return 0u16; }
+    
+    let mut hasher = DefaultHasher::new();
+    entry_data.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    for idx in 0..cache.len()
+    { 
+        if cache[idx].hash == hash { return cache[idx].cursor; }
+    }
+    
+    let mut cursor: usize = 0;
+    cursor = buf.get_wpos();
+    
+    buf.write_bytes([entry_len as u16].as_byte_slice());
+    buf.write_bytes(entry_data);
+    
+    let write_cursor = buf.get_wpos();
+    let new_buff_size = (buf.len() - 4) as u32;
+    buf.set_wpos(0);
+    buf.write_bytes([new_buff_size].as_byte_slice());
+    buf.set_wpos(write_cursor);
+    
+    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u16 };
+    cache.push(cached_index);
     
     return cursor as u16;
 }
@@ -1563,27 +1728,8 @@ fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> u
     return number_of_inserts;
 }
 
-static mut get_page_time: u128 = 0u128;
-static mut find_pieces_time: u128 = 0u128;
-
 fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
 {
-    /*
-let get_page_now = Instant::now();
-    let mut mob_body_opt = isahc::get(page_path);
-    if mob_body_opt.is_err()
-    {
-        println!("Retry on error {:?}", mob_body_opt.err());
-        mob_body_opt = isahc::get(page_path);
-    }
-    
-    unsafe { get_page_time += get_page_now.elapsed().as_millis(); };
-    
-    let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
-    */
-    
-    let find_pieces_now = Instant::now();
-    
     let offset_begin = mob_body_opt.find("<h1>");
     if offset_begin.is_none() {
         println!("[ERROR] Probably non-mob page: {}", page_path);
@@ -1597,8 +1743,6 @@ let get_page_now = Instant::now();
     if mob_page_tmp.is_none() { println!("Could not do shit. Not a mob?"); panic!(); }
     
     let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-    
-    unsafe { find_pieces_time += find_pieces_now.elapsed().as_millis(); };
     
     let mut mob_page = mob_page_tmp.as_str();
     
@@ -1901,9 +2045,6 @@ fn get_all_raw_pages(paths: &[String]) -> Vec<String>
     return raw_pages;
 }
 
-static mut total_single_mob_page_time: u128 = 0u128;
-static mut total_single_npc_page_time: u128 = 0u128;
-
 //fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn main() -> Result<(), isahc::Error> {
     
@@ -1911,9 +2052,7 @@ fn main() -> Result<(), isahc::Error> {
     
     let mut total_mob_get_pages_time    = 0u128;
     let mut total_npc_get_pages_time    = 0u128;
-    let mut total_mob_page_array_time   = 0u128;
     let mut total_mob_create_entry_time = 0u128;
-    let mut total_npc_page_array_time   = 0u128;
     let mut total_npc_create_entry_time = 0u128;
     
     let mut array_of_paths     = getArrayOfPaths("https://golarion.altervista.org/wiki/Bestiario_di_Golarion");
@@ -1951,17 +2090,18 @@ fn main() -> Result<(), isahc::Error> {
     let mut raw_page_vec = get_all_raw_pages(&array_of_paths);
     total_mob_get_pages_time += garpm_now.elapsed().as_millis();
     
+    //let mut strings_cache = Vec::<CachedIndex>::with_capacity(4096);
+    let mut vec_cache = VectorCache::new(4096);
+    
     println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
     {
-        let mpa_now = Instant::now();
         let mut pages = get_mob_page_array(&raw_page_vec[file_idx], &array_of_paths[file_idx]);
-        total_mob_page_array_time += mpa_now.elapsed().as_millis();
         
         for mut page in pages
         {
             let mce_now = Instant::now();
-            let entry = create_mob_entry(&mut buf_context, page, file_idx);
+            let entry = create_mob_entry(&mut vec_cache, &mut buf_context, page, file_idx);
             mob_entries_vec.push(entry);
             total_mob_create_entry_time += mce_now.elapsed().as_millis();
         }
@@ -1975,14 +2115,12 @@ fn main() -> Result<(), isahc::Error> {
     println!("Start NPCs");
     for file_idx in 0..array_of_npc_paths.len()
     {
-        let npa_now = Instant::now();
         let mut pages = get_npc_page_array(&raw_page_vec[file_idx], &array_of_npc_paths[file_idx]);
-        total_npc_page_array_time += npa_now.elapsed().as_millis();
         
         for mut page in pages
         {
             let nce_now = Instant::now();
-            let entry = create_npc_entry(&mut buf_context, page, file_idx);
+            let entry = create_npc_entry(&mut vec_cache.strings, &mut buf_context, page, file_idx);
             npc_entries_vec.push(entry);
             total_npc_create_entry_time += nce_now.elapsed().as_millis();
         }
@@ -2221,15 +2359,12 @@ fn main() -> Result<(), isahc::Error> {
     
     
     println!("Total Mob Get Pages Time:     {} seconds", total_mob_get_pages_time / 1000);
-    println!("Total Mob Page Array Time:    {} seconds", total_mob_page_array_time / 1000);
-    unsafe { println!("  Total Single Mob Page Time: {} seconds", total_single_mob_page_time / 1000); };
-    unsafe { println!("  Total Get Page Time: {} seconds", get_page_time / 1000); };
-    unsafe { println!("  Total Find Pieces Time: {} seconds", find_pieces_time / 1000); };
     println!("Total Mob Create Entity Time: {} seconds", total_mob_create_entry_time / 1000);
     
+    unsafe { println!("Prepare Mob Entry Time: {} seconds", create_mob_entry_prepare_time / 1000); };
+    unsafe { println!("BufferMob Entry Time:   {} seconds", create_mob_entry_buffer_time / 1000); };
+    
     println!("Total NPC Get Pages Time:     {} seconds", total_npc_get_pages_time / 1000);
-    println!("Total NPC Page Array Time:    {} seconds", total_npc_page_array_time / 1000);
-    unsafe { println!("Total Single NPC Page Time:   {} seconds", total_single_npc_page_time / 1000); };
     println!("Total NPC Create Entity Time: {} seconds", total_npc_create_entry_time / 1000);
     
     let elapsed = now.elapsed();
