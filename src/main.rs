@@ -923,7 +923,11 @@ fn create_npc_entry(cache: &mut VectorCache,
     
     let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
     let mut class_arr = fill_array_from_available(&page.class, &class_check);
-    
+    /*
+    dbg!(page.origin);
+    dbg!(class_arr);
+    panic!();
+    */
     //NOTE: Manually fix the category block
     let mut subtypes_count = 0;
     let mut arch_count     = 0;
@@ -1425,7 +1429,7 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
     {
         (el, next) = get_until(next, until[i]);
         
-        if el == GLOBAL_NULL && missed_i == 99 { missed_i = i; }
+        if el == GLOBAL_NULL && missed_i == 99 && i != 0 { missed_i = i; }
         
         if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el.trim()); }
         else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
@@ -1438,6 +1442,42 @@ fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a
         result_arr.insert(missed_i, last.trim());
         result_arr.push(GLOBAL_NULL); //Push the last missed element.
     }
+    
+    return result_arr;
+}
+
+fn fill_array_from_available_dbg<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
+{
+    let mut result_arr = vec![];
+    
+    let mut next: &str = data_slice;
+    let mut el: &str;
+    let mut i: usize = 0;
+    
+    let mut missed_i: usize = 99;
+    
+    for i in 0..until.len()
+    {
+        (el, next) = get_until(next, until[i]);
+        
+        if el == GLOBAL_NULL && missed_i == 99 && i != 0 { missed_i = i; }
+        
+        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el.trim()); }
+        else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
+        
+        println!("{:#?}", result_arr);
+    }
+    
+    let (last, _) = get_until(next, "");
+    
+    if missed_i == 99 { result_arr.push(last.trim()); }
+    else
+    { 
+        result_arr.insert(missed_i, last.trim());
+        result_arr.push(GLOBAL_NULL); //Push the last missed element.
+    }
+    
+    println!("{:#?}", result_arr);
     
     return result_arr;
 }
