@@ -870,7 +870,7 @@ struct NPC_Entry
     psych      : u32,
     magics     : u32,
     spells     : u32,
-    tactics    : u32,
+    tactics    : [u32; 3],
     skills     : [u32; 24],
     racial_mods: u32,
     spec_qual  : u32,
@@ -1063,17 +1063,24 @@ fn create_npc_entry(cache: &mut VectorCache,
     defense_arr[0] = defense_arr[0].get(4..).unwrap();
     
     //TODO Maybe further parsing to compress and better separate attacks and spell strings?
+    
+    
+    //NOTE: For some reason, for NPCs it's "Incantesimi" rathern than "Incantesimi Conosciuti"
     let attack_check   = ["Mischia:", "Distanza:", "Attacchi Speciali:", "Spazio:", "Portata:",
-                          "Magia Psichica:", "Capacità Magiche:", "Incantesimi Conosciuti:" ];
+                          "Magia Psichica:", "Capacità Magiche:", "Incantesimi:" ];
     let mut attack_arr = fill_array_from_available(&page.attack, &attack_check);
-    
-    
-    //NOTE: Tactics
-    //TODO: I don't know, parse it more?
-    //page.tactics = check_unwrap!(page.tactics, file_idx, head_arr[0]).to_string();
     
     //NOTE: Manually fix Speed
     attack_arr[0] = attack_arr[0].get(11..).unwrap();
+    
+    
+    //NOTE: Tactics
+    let tactics_check = ["Durante il Combattimento:", "Statistiche Base:"];
+    let mut tactics_arr = fill_array_from_available(&page.tactics, &tactics_check); 
+    
+    //NOTE: Manually fix "Prima del Combattimento"
+    if !tactics_arr[0].is_empty() { tactics_arr[0] = tactics_arr[0].get(25..).unwrap(); }
+    
     
     //TODO: Add checks for Dotazioni da Combattimento and Proprietà
     let stats_check   = ["Bonus di Attacco Base:", "BMC:", "DMC:", "Talenti:", "Abilità:",
@@ -1223,7 +1230,9 @@ fn create_npc_entry(cache: &mut VectorCache,
     let spells_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[8]);
     
     //Tactics
-    let tactics_idx  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.tactics);
+    let mut tactics_idx  = [0u32; 3];
+    for t in 0..tactics_idx.len()
+    { tactics_idx[t] = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, tactics_arr[t]); }
     
     //Stats
     let mut talents_idx = [0u16; 24];
@@ -2290,7 +2299,7 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.magics].as_byte_slice());
         result_file.write_all([entry.spells].as_byte_slice());
         
-        result_file.write_all([entry.tactics].as_byte_slice());
+        for mut el in entry.tactics { result_file.write_all([el].as_byte_slice()); }
         
         for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         
