@@ -125,6 +125,14 @@ macro_rules! check_unwrap
     }
 }
 
+/* NOTETODO: Currently NOT used
+static skills_name: [&str; _] = 
+["Acrobazia", "Addestrare Animali", "Artigianato", "Artista della Fuga", "Camuffare", "Cavalcare", "Conoscenze",
+ "Diplomazia","Disattivare Congegni", "Furtività", "Guarire", "Intimidire", "Intrattenere", "Intuizione",
+ "Linguistica", "Nuotare", "Percezione", "Professione", "Raggirare", "Rapidità di Mano", "Sapienza Magica",
+ "Scalare", "Sopravvivenza", "Utilizzare Congegni Magici", "Valutare", "Volare"];
+*/
+
 #[derive(Debug)]
 struct Mob_Page {
     header:  String,
@@ -381,6 +389,7 @@ struct Mob_Entry
     psych      : u32,
     magics     : u32,
     spells     : u32,
+    skills     : [u32; 24],
     racial_mods: u32,
     spec_qual  : u32,
     specials   : [u32; 24],
@@ -417,7 +426,6 @@ struct Mob_Entry
     cmb        : u16,
     cmd        : u16,
     talents    : [u16; 24],
-    skills     : [u16; 24],
     lang       : [u16; 24],
     env        : u16,
 }
@@ -739,7 +747,7 @@ fn create_mob_entry(cache: &mut VectorCache,
     
     //Stats
     let mut talents_idx = [0u16; 24];
-    let mut skills_idx  = [0u16; 24];
+    let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
@@ -757,7 +765,7 @@ fn create_mob_entry(cache: &mut VectorCache,
     { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
     for s in 0..skill_count
-    { skills_idx[s]  = add_entry_if_missing(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
+    { skills_idx[s]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
     
     for l in 0..lang_count
     { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
@@ -863,6 +871,7 @@ struct NPC_Entry
     magics     : u32,
     spells     : u32,
     tactics    : u32,
+    skills     : [u32; 24],
     racial_mods: u32,
     spec_qual  : u32,
     given_equip: u32,
@@ -900,7 +909,6 @@ struct NPC_Entry
     cmb        : u16,
     cmd        : u16,
     talents    : [u16; 24],
-    skills     : [u16; 24],
     lang       : [u16; 24],
 }
 
@@ -1215,7 +1223,7 @@ fn create_npc_entry(cache: &mut VectorCache,
     
     //Stats
     let mut talents_idx = [0u16; 24];
-    let mut skills_idx  = [0u16; 24];
+    let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
@@ -1233,7 +1241,7 @@ fn create_npc_entry(cache: &mut VectorCache,
     { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
     for s in 0..skill_count
-    { skills_idx[s]  = add_entry_if_missing(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
+    { skills_idx[s]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
     
     for l in 0..lang_count
     { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
@@ -1460,7 +1468,7 @@ struct VectorCache
     special:     Vec::<CachedIndex::<u16>>,
     spells:      Vec::<CachedIndex::<u32>>,
     talents:     Vec::<CachedIndex::<u16>>,
-    skills:      Vec::<CachedIndex::<u16>>,
+    skills:      Vec::<CachedIndex::<u32>>,
     languages:   Vec::<CachedIndex::<u16>>,
     specials:    Vec::<CachedIndex::<u32>>,
     environment: Vec::<CachedIndex::<u16>>,
@@ -1489,7 +1497,7 @@ impl VectorCache
             special:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             spells:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
             talents:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            skills:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            skills:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
             languages:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             specials:    Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
             environment: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
@@ -1510,6 +1518,7 @@ fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuf
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
     let replace_shit = replace_shit.replace("\u{2026}", "...");
+    let replace_shit = replace_shit.replace("\u{2212}", "-");
     let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
@@ -1545,6 +1554,7 @@ fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuf
     
     return cursor as u32;
 }
+
 fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
@@ -1557,6 +1567,7 @@ fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer,
     let replace_shit = replace_shit.replace("\u{201c}", "\"");
     let replace_shit = replace_shit.replace("\u{201d}", "\"");
     let replace_shit = replace_shit.replace("\u{2026}", "...");
+    let replace_shit = replace_shit.replace("\u{2212}", "-");
     let replace_shit = replace_shit.replace("\u{2800}", "");
     let replace_shit = replace_shit.replace("\u{fb01}", "fi");
     let replace_shit = replace_shit.replace("\u{fb02}", "fl");
@@ -1574,6 +1585,57 @@ fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer,
     { 
         if cache[idx].hash == hash { return cache[idx].cursor; }
     }
+    
+    let mut cursor: usize = 0;
+    cursor = buf.get_wpos();
+    
+    buf.write_bytes([entry_len as u16].as_byte_slice());
+    buf.write_bytes(entry_data);
+    
+    let write_cursor = buf.get_wpos();
+    let new_buff_size = (buf.len() - 4) as u32;
+    buf.set_wpos(0);
+    buf.write_bytes([new_buff_size].as_byte_slice());
+    buf.set_wpos(write_cursor);
+    
+    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u16 };
+    cache.push(cached_index);
+    
+    return cursor as u16;
+}
+
+fn add_entry_if_missing_dbg(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
+{
+    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
+    let replace_shit = replace_shit.replace("\u{200b}", "");
+    let replace_shit = replace_shit.replace("\u{2011}", "-");
+    let replace_shit = replace_shit.replace("\u{2013}", "-");
+    let replace_shit = replace_shit.replace("\u{2014}", "-");
+    let replace_shit = replace_shit.replace("\u{2018}", "'");
+    let replace_shit = replace_shit.replace("\u{2019}", "'");
+    let replace_shit = replace_shit.replace("\u{201c}", "\"");
+    let replace_shit = replace_shit.replace("\u{201d}", "\"");
+    let replace_shit = replace_shit.replace("\u{2026}", "...");
+    let replace_shit = replace_shit.replace("\u{2212}", "-");
+    let replace_shit = replace_shit.replace("\u{2800}", "");
+    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
+    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
+    let entry_data   = replace_shit.as_bytes();
+    let entry_len    = replace_shit.len();
+    
+    //NOTE: Index 0 means an empty entry.
+    if entry_len == 0 { return 0u16; }
+    
+    let mut hasher = DefaultHasher::new();
+    entry_data.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    for idx in 0..cache.len()
+    { 
+        if cache[idx].hash == hash { return cache[idx].cursor; }
+    }
+    
+    println!("{}", entry_data_str);
     
     let mut cursor: usize = 0;
     cursor = buf.get_wpos();
@@ -2113,6 +2175,8 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.magics].as_byte_slice());
         result_file.write_all([entry.spells].as_byte_slice());
         
+        for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
+        
         result_file.write_all([entry.racial_mods].as_byte_slice());
         result_file.write_all([entry.spec_qual].as_byte_slice());
         
@@ -2158,7 +2222,6 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.cmd].as_byte_slice());
         
         for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
-        for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.env].as_byte_slice());
@@ -2188,6 +2251,8 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.spells].as_byte_slice());
         
         result_file.write_all([entry.tactics].as_byte_slice());
+        
+        for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         
         result_file.write_all([entry.racial_mods].as_byte_slice());
         result_file.write_all([entry.spec_qual].as_byte_slice());
@@ -2236,7 +2301,6 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all([entry.cmd].as_byte_slice());
         
         for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
-        for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
         for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
         
         //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
