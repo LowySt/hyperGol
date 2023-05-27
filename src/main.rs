@@ -64,7 +64,8 @@ Total NPC Get Pages Time:      6323 ms
 Total NPC Create Entity Time:     1 ms
 */
 
-static BLACKLIST: [&str; 113] = ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria"];
+static BLACKLIST: [&str; 120] =
+["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria", "/wiki/Kassen", "/wiki/Tian_Xia", "/wiki/Magnimar", "/wiki/Primo_Mondo", "/wiki/Piano_Astrale", "/wiki/La_Fossa_Storval", "/wiki/Possedimenti_di_Belkzen"];
 
 static NPC_BLACKLIST: [&str; 71] = 
 ["/wiki/Umano", "/wiki/Adepto", "/wiki/Combattente", "/wiki/Esperto", "/wiki/Mezzelfo", "/wiki/Popolano",
@@ -135,6 +136,8 @@ static skills_name: [&str; _] =
 
 #[derive(Debug)]
 struct Mob_Page {
+    page_addr: String,
+    
     header:  String,
     origin:  String,
     class:   String,
@@ -148,7 +151,7 @@ struct Mob_Page {
     source:  String,
 }
 
-fn get_mob_page(orig_mob_page: &str) -> (Mob_Page, &str)
+fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
 {
     let mut mob_page = orig_mob_page;
     
@@ -216,7 +219,8 @@ fn get_mob_page(orig_mob_page: &str) -> (Mob_Page, &str)
     if !origin.is_empty() { origin = origin.trim().to_string(); }
     if !desc.is_empty()   { desc = desc.trim().to_string(); }
     
-    let mut res = Mob_Page { header: head, origin: origin, class: class, misc: misc,
+    let mut res = Mob_Page { page_addr: page_addr,
+        header: head, origin: origin, class: class, misc: misc,
         defense: defense, attack: attack, stats: stats, special: specials, 
         ecology: ecology, desc: desc, source: source };
     
@@ -455,7 +459,8 @@ fn create_mob_entry(cache: &mut VectorCache,
     if class_arr[3].is_empty()
     {
         let size_idx = class_arr[2].rfind(" ");
-        if size_idx.is_none() { println!("Maybe error? size_idx is missing. How can it be missing?"); panic!(); }
+        if size_idx.is_none()
+        { println!("{:#?}\nMaybe error? size_idx is missing. How can it be missing?", page.page_addr); panic!(); }
         
         let size = class_arr[2].get(size_idx.unwrap()..);
         if size.is_none() { println!("How can I not get size??"); panic!(); }
@@ -597,6 +602,8 @@ fn create_mob_entry(cache: &mut VectorCache,
     let mut talent_count = 0;
     if !stats_arr[4].is_empty()
     {
+        //TODO Fix Arma Focalizzata (Spada, Arco), 
+        //     Producing: [Arma Focalizzata (Spada,], [ Arco),]
         talent_count = flatten_str_list(&mut stats_arr, 4, ", ");
     }
     
@@ -604,7 +611,8 @@ fn create_mob_entry(cache: &mut VectorCache,
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
     {
-        //TODO Separate type from value and store them in 2 different buffers
+        //TODO Fix Conoscenze (arcane, natura) +7, 
+        //     Producing: [Conoscenze (arcane,], [ natura) +7,]
         skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
     }
     
@@ -1747,7 +1755,7 @@ fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
     
     //NOTE: Let's try extracting entire tag blocks to parse the mob data
     let mut num_pages = 1;
-    let (mut page_one, maybe_next) = get_mob_page(mob_page);
+    let (mut page_one, maybe_next) = get_mob_page(mob_page, page_path.to_string());
     
     let mut pages = Vec::new();
     pages.push(page_one);
@@ -1757,7 +1765,7 @@ fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
         let maybe_next_tmp = clear_tag(maybe_next, "<div class=\"toccolours mw-collapsible-content\"", "</div>");
         let mut maybe_next = maybe_next_tmp.as_str();
         
-        (page_two, _) = get_mob_page(maybe_next);
+        (page_two, _) = get_mob_page(maybe_next, page_path.to_string());
         pages.push(page_two);
     }
     
