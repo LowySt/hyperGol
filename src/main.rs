@@ -613,8 +613,39 @@ fn create_mob_entry(cache: &mut VectorCache,
     {
         //TODO Fix Conoscenze (arcane, natura) +7, 
         //     Producing: [Conoscenze (arcane,], [ natura) +7,]
-        skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        //skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        let skill_paren_index = stats_arr[5+skill_off].find("(");
+        
+        if skill_paren_index.is_none()
+        {
+            skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        }
+        else
+        {
+            let mut skill_paren_c_index = stats_arr[5+skill_off].find(")");
+            if skill_paren_c_index.is_none() { panic!(); } //TODO
+            
+            skill_paren_c_index = skill_paren_c_index.unwrap();
+            
+            loop 
+            {
+                let skill_comma_index = stats_arr[5+skill_off+skill_count].find(", ");
+                if skill_comma_index.is_none() { panic!(); } //TODO
+                
+                if skill_comma_index.unwrap() < skill_paren_index.unwrap()
+                {
+                    //NOTE: All good, we are not inside the parens
+                    
+                }
+                else
+                {
+                    //TODO: We are inside, we need to skip this comma, and go to the next one
+                }
+            }
+        }
     }
+    
+    for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -2101,7 +2132,8 @@ fn main() -> Result<(), isahc::Error> {
     let mut vec_cache = VectorCache::new(4096);
     
     println!("Start Mobs");
-    for file_idx in 0..array_of_paths.len()
+    //for file_idx in 0..array_of_paths.len()
+    for file_idx in 127..128
     {
         let mut pages = get_mob_page_array(&raw_page_vec[file_idx], &array_of_paths[file_idx]);
         
