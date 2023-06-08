@@ -611,10 +611,7 @@ fn create_mob_entry(cache: &mut VectorCache,
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
     {
-        //TODO Fix Conoscenze (arcane, natura) +7, 
-        //     Producing: [Conoscenze (arcane,], [ natura) +7,]
-        //skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
-        let skill_paren_index = stats_arr[5+skill_off].find("(");
+        let mut skill_paren_index = stats_arr[5+skill_off].find("(");
         
         if skill_paren_index.is_none()
         {
@@ -622,24 +619,57 @@ fn create_mob_entry(cache: &mut VectorCache,
         }
         else
         {
-            let mut skill_paren_c_index = stats_arr[5+skill_off].find(")");
-            if skill_paren_c_index.is_none() { panic!(); } //TODO
-            
-            skill_paren_c_index = skill_paren_c_index.unwrap();
-            
+    		let mut base = stats_arr.remove(5 + skill_off);
+
             loop 
             {
-                let skill_comma_index = stats_arr[5+skill_off+skill_count].find(", ");
-                if skill_comma_index.is_none() { panic!(); } //TODO
+				let mut skill_curr_off = 5 + skill_off + skill_count;
+				let mut effective_paren_index = 999999;
+				let mut skill_paren_c_index   = 9999999;
+
+           	 let skill_paren_c_index_opt = base.find(")");
+				if skill_paren_index.is_some() { 
+					effective_paren_index = skill_paren_index.unwrap();
+					if skill_paren_c_index_opt.is_none() { panic!(); }
+					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
+				}
+
+                let skill_comma_index = base.find(", ");
+                if skill_comma_index.is_none() { 
+					//No more fields, add the last element and quit
+					stats_arr.insert(skill_curr_off, base);
+					skill_count += 1;
+					break; 
+				}
                 
-                if skill_comma_index.unwrap() < skill_paren_index.unwrap()
+                if skill_comma_index.unwrap() < effective_paren_index
                 {
                     //NOTE: All good, we are not inside the parens
-                    
+					let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
+					let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
+					stats_arr.insert(skill_curr_off, new_skill);
+					skill_count += 1;
+                    base = next;
+					continue;
                 }
                 else
                 {
-                    //TODO: We are inside, we need to skip this comma, and go to the next one
+                    //TODO: If the comma is after the close paren we don't actually need to do this!
+                    let after_paren_idx = base[skill_paren_c_index..].find(", ");
+					if after_paren_idx.is_none() {
+						//No more fields, add the last element and quit
+						stats_arr.insert(skill_curr_off, base);
+						skill_count += 1;
+						break;
+					}
+
+					let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
+					let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
+					stats_arr.insert(skill_curr_off, new_skill);
+					skill_count += 1;
+					base = next;
+					skill_paren_index = base.find("(");
+					continue;
                 }
             }
         }
