@@ -630,7 +630,7 @@ fn create_mob_entry(cache: &mut VectorCache,
            	 let skill_paren_c_index_opt = base.find(")");
 				if skill_paren_index.is_some() { 
 					effective_paren_index = skill_paren_index.unwrap();
-					if skill_paren_c_index_opt.is_none() { panic!(); }
+					if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
 					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
 				}
 
@@ -650,6 +650,7 @@ fn create_mob_entry(cache: &mut VectorCache,
 					stats_arr.insert(skill_curr_off, new_skill);
 					skill_count += 1;
                     base = next;
+					skill_paren_index = base.find("(");
 					continue;
                 }
                 else
@@ -675,7 +676,7 @@ fn create_mob_entry(cache: &mut VectorCache,
         }
     }
     
-    for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
+    //for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -2162,9 +2163,10 @@ fn main() -> Result<(), isahc::Error> {
     let mut vec_cache = VectorCache::new(4096);
     
     println!("Start Mobs");
-    //for file_idx in 0..array_of_paths.len()
-    for file_idx in 127..128
+    for file_idx in 0..array_of_paths.len()
+    //for file_idx in 86..87
     {
+		//println!("{:#?}", file_idx);
         let mut pages = get_mob_page_array(&raw_page_vec[file_idx], &array_of_paths[file_idx]);
         
         for mut page in pages
