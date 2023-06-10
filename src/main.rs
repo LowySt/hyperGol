@@ -620,20 +620,20 @@ fn create_mob_entry(cache: &mut VectorCache,
         else
         {
     		let mut base = stats_arr.remove(5 + skill_off);
-
+            
             loop 
             {
 				let mut skill_curr_off = 5 + skill_off + skill_count;
 				let mut effective_paren_index = 999999;
 				let mut skill_paren_c_index   = 9999999;
-
+                
            	 let skill_paren_c_index_opt = base.find(")");
 				if skill_paren_index.is_some() { 
 					effective_paren_index = skill_paren_index.unwrap();
 					if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
 					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
 				}
-
+                
                 let skill_comma_index = base.find(", ");
                 if skill_comma_index.is_none() { 
 					//No more fields, add the last element and quit
@@ -663,7 +663,7 @@ fn create_mob_entry(cache: &mut VectorCache,
 						skill_count += 1;
 						break;
 					}
-
+                    
 					let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
 					let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
 					stats_arr.insert(skill_curr_off, new_skill);
@@ -676,7 +676,10 @@ fn create_mob_entry(cache: &mut VectorCache,
         }
     }
     
-    //for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
+    
+    if page.page_addr == "https://golarion.altervista.org/wiki/Malziarax" {
+        for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
+    }
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -2164,9 +2167,13 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
-    //for file_idx in 86..87
+        //for file_idx in 86..87
     {
-		//println!("{:#?}", file_idx);
+		/*
+if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" {
+            println!("{:#?}", file_idx);
+        }
+*/
         let mut pages = get_mob_page_array(&raw_page_vec[file_idx], &array_of_paths[file_idx]);
         
         for mut page in pages
