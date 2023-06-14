@@ -230,6 +230,8 @@ fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
 //TODO: Merge this with mob page in the future
 #[derive(Debug)]
 struct NPC_Page {
+    page_addr: String,
+    
     header:  String,
     origin:  String,
     class:   String,
@@ -243,7 +245,7 @@ struct NPC_Page {
     source:  String,
 }
 
-fn get_npc_page(orig_npc_page: &str) -> NPC_Page
+fn get_npc_page(orig_npc_page: &str, page_addr: String) -> NPC_Page
 {
     let mut npc_page = orig_npc_page;
     
@@ -343,7 +345,8 @@ fn get_npc_page(orig_npc_page: &str) -> NPC_Page
     if !origin.is_empty() { origin = origin.trim().to_string(); }
     if !desc.is_empty()   { desc = desc.trim().to_string(); }
     
-    let mut res = NPC_Page { header: head, origin: origin, class: class, misc: misc,
+    let mut res = NPC_Page { page_addr: page_addr, 
+        header: head, origin: origin, class: class, misc: misc,
         defense: defense, attack: attack, tactics: tactics, 
         stats: stats, special: specials, desc: desc, source: source };
     
@@ -676,10 +679,10 @@ fn create_mob_entry(cache: &mut VectorCache,
         }
     }
     
-    
+    /*
     if page.page_addr == "https://golarion.altervista.org/wiki/Malziarax" {
         for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
-    }
+    }*/
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -1167,9 +1170,12 @@ fn create_npc_entry(cache: &mut VectorCache,
     let mut talent_count = 0;
     if !stats_arr[4].is_empty()
     {
+        //TODO Fix Arma Focalizzata (Spada, Arco), 
+        //     Producing: [Arma Focalizzata (Spada,], [ Arco),]
         talent_count = flatten_str_list(&mut stats_arr, 4, ", ");
     }
     
+    /*
     let mut skill_count = 0;
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
@@ -1177,6 +1183,77 @@ fn create_npc_entry(cache: &mut VectorCache,
         //TODO Separate type from value and store them in 2 different buffers
         skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
     }
+*/
+    
+    let mut skill_count = 0;
+    let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
+    if !stats_arr[5+skill_off].is_empty()
+    {
+        let mut skill_paren_index = stats_arr[5+skill_off].find("(");
+        
+        if skill_paren_index.is_none()
+        {
+            skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        }
+        else
+        {
+    		let mut base = stats_arr.remove(5 + skill_off);
+            
+            loop 
+            {
+				let mut skill_curr_off = 5 + skill_off + skill_count;
+				let mut effective_paren_index = 999999;
+				let mut skill_paren_c_index   = 9999999;
+                
+           	 let skill_paren_c_index_opt = base.find(")");
+				if skill_paren_index.is_some() { 
+					effective_paren_index = skill_paren_index.unwrap();
+					if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
+					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
+				}
+                
+                let skill_comma_index = base.find(", ");
+                if skill_comma_index.is_none() { 
+					//No more fields, add the last element and quit
+					stats_arr.insert(skill_curr_off, base);
+					skill_count += 1;
+					break; 
+				}
+                
+                if skill_comma_index.unwrap() < effective_paren_index
+                {
+                    //NOTE: All good, we are not inside the parens
+					let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
+					let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
+					stats_arr.insert(skill_curr_off, new_skill);
+					skill_count += 1;
+                    base = next;
+					skill_paren_index = base.find("(");
+					continue;
+                }
+                else
+                {
+                    //TODO: If the comma is after the close paren we don't actually need to do this!
+                    let after_paren_idx = base[skill_paren_c_index..].find(", ");
+					if after_paren_idx.is_none() {
+						//No more fields, add the last element and quit
+						stats_arr.insert(skill_curr_off, base);
+						skill_count += 1;
+						break;
+					}
+                    
+					let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
+					let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
+					stats_arr.insert(skill_curr_off, new_skill);
+					skill_count += 1;
+					base = next;
+					skill_paren_index = base.find("(");
+					continue;
+                }
+            }
+        }
+    }
+    
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -1890,14 +1967,14 @@ fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
         mob_page = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
     }
     
-    let page_one = get_npc_page(&mob_page);
+    let page_one = get_npc_page(&mob_page, page_path.to_string());
     
     let mut pages = Vec::new();
     pages.push(page_one);
     
     if has_two_pages
     {
-        let page_two = get_npc_page(&second_page);
+        let page_two = get_npc_page(&second_page, page_path.to_string());
         pages.push(page_two);
     }
     
