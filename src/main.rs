@@ -64,8 +64,22 @@ Total NPC Get Pages Time:      6323 ms
 Total NPC Create Entity Time:     1 ms
 */
 
+/*
 static BLACKLIST: [&str; 120] =
 ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria", "/wiki/Kassen", "/wiki/Tian_Xia", "/wiki/Magnimar", "/wiki/Primo_Mondo", "/wiki/Piano_Astrale", "/wiki/La_Fossa_Storval", "/wiki/Possedimenti_di_Belkzen"];
+*/
+
+static BLACKLIST: [&str; 58] = 
+["/wiki/Dinosauro", "/wiki/Gremlin", "/wiki/Formian", "/wiki/Leshy", "/wiki/Meccanico", "/wiki/Popolo_Oscuro",
+ "/wiki/Diavolo", "/wiki/Demone", "/wiki/Pesce", "/wiki/Agathion", "/wiki/Angelo", "/wiki/Arconte",
+ "/wiki/Asura", "/wiki/Azata", "/wiki/Daemon", "/wiki/Div", "/wiki/Drago", "/wiki/Eone", "/wiki/Inevitabile",
+ "/wiki/Kami", "/wiki/Kyton", "/wiki/Oni", "/wiki/Protean", "/wiki/Psicopompo", "/wiki/Qlippoth", "/wiki/Rakshasa",
+ "/wiki/Razza_Predatrice", "/wiki/Sahkil", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", 
+ "/wiki/Carnideforme", "/wiki/Golem", "/wiki/Robot", "/wiki/Thriae", "/wiki/Alveare", "/wiki/Drago_Esterno", 
+ "/wiki/Sfinge", "/wiki/Caccia_Selvaggia", "/wiki/Ombra_Notturna", "/wiki/Manasaputra", "/wiki/Siktempora", "/wiki/Calamit%C3%A0", "/wiki/Demodand", "/wiki/Linnorm", "/wiki/Araldo", "/wiki/Colosso", "/wiki/Behemoth", 
+ "/wiki/Idra", "/wiki/Signore_dei_Qlippoth", "/wiki/Progenie_di_Rovagug", "/wiki/Kaiju", "/wiki/Arcidiavolo", 
+ "/wiki/Signore_dei_Demoni", "/wiki/Signore_Empireo", "/wiki/Grande_Antico", "/wiki/Kyton#Kyton_Demagogo", 
+ "/wiki/Cavaliere_dell%27Apocalisse", ];
 
 static NPC_BLACKLIST: [&str; 71] = 
 ["/wiki/Umano", "/wiki/Adepto", "/wiki/Combattente", "/wiki/Esperto", "/wiki/Mezzelfo", "/wiki/Popolano",
@@ -105,8 +119,8 @@ fn get_path_from_slice(begin: &str) -> Option<&str> {
 	let resource = resource.unwrap();
 	
 	if  resource.contains("redlink=1") ||
-		resource.contains("Tipo") || 
-		resource.contains("Sottotipo") ||
+		//resource.contains("Tipo") || 
+		//resource.contains("Sottotipo") ||
 		resource.contains("Archetipo") { return None; }
     
 	if check_path_against_blacklist(resource) == true { return None; }
@@ -155,27 +169,27 @@ fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
 {
     let mut mob_page = orig_mob_page;
     
-    let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>".to_string(), "</h1>".to_string());
+    let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>", "</h1>");
     mob_page = next;
     
-    let (race_class_info_pre, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">".to_string(), "</div>".to_string());
+    let (race_class_info_pre, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">", "</div>");
     mob_page = next;
     
     let (origin_info, race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
     
-    let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+    let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
     mob_page = next;
     
     mob_page = skip_to(mob_page, "id=\"Difesa");
-    let (defense_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+    let (defense_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
     mob_page = next;
     
     mob_page = skip_to(mob_page, "id=\"Attacco");
-    let (attack_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "<h2>".to_string());
+    let (attack_block, next) = get_slice_inside_tags(mob_page, "<p>", "<h2>");
     mob_page = next;
     
     mob_page = skip_to(mob_page, "id=\"Statistiche");
-    let (stats_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+    let (stats_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
     mob_page = next;
     
     let mut specials_block: &str = "";
@@ -187,19 +201,19 @@ fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
     }
     else
     {
-        let (specials_block_tmp, next) = get_slice_inside_tags(mob_page, "<h3>".to_string(), "<h2><span class=\"mw-headline\" id=\"Ecologia".to_string());
+        let (specials_block_tmp, next) = get_slice_inside_tags(mob_page, "<h3>", "<h2><span class=\"mw-headline\" id=\"Ecologia");
         specials_block = specials_block_tmp;
         mob_page = next;
     }
     
-    let (ecology_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+    let (ecology_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
     mob_page = next;
     
     mob_page = skip_to(mob_page, "id=\"Descrizione");
-    let (desc_block, next) = get_slice_inside_tags(mob_page, "</h2>".to_string(), "<hr />".to_string());
+    let (desc_block, next) = get_slice_inside_tags(mob_page, "</h2>", "<hr />");
     mob_page = next;
     
-    let (source_block, next) = get_slice_inside_tags(mob_page, "<p>".to_string(), "</p>".to_string());
+    let (source_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
     
     // NOTE: Now we parse the sub sections.
     let mut specials = String::new();
@@ -249,10 +263,10 @@ fn get_npc_page(orig_npc_page: &str, page_addr: String) -> NPC_Page
 {
     let mut npc_page = orig_npc_page;
     
-    let (npc_header, next) = get_slice_inside_tags(npc_page, "<h1>".to_string(), "</h1>".to_string());
+    let (npc_header, next) = get_slice_inside_tags(npc_page, "<h1>", "</h1>");
     npc_page = next;
     
-    let (race_class_info_pre, next) = get_slice_inside_tags(npc_page, "<div class=\"mw-collapsible mw-collapsed\">".to_string(), "</div>".to_string());
+    let (race_class_info_pre, next) = get_slice_inside_tags(npc_page, "<div class=\"mw-collapsible mw-collapsed\">", "</div>");
     npc_page = next;
     
     let (mut origin_info, mut race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
@@ -278,36 +292,36 @@ fn get_npc_page(orig_npc_page: &str, page_addr: String) -> NPC_Page
         }
     }
     
-    let (misc_info, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "</p>".to_string());
+    let (misc_info, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
     npc_page = next;
     
     npc_page = skip_to(npc_page, "id=\"Difesa");
-    let (defense_block, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "</p>".to_string());
+    let (defense_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
     npc_page = next;
     
     npc_page = skip_to(npc_page, "id=\"Attacco");
-    let (attack_block, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "<h2>".to_string());
+    let (attack_block, next) = get_slice_inside_tags(npc_page, "<p>", "<h2>");
     npc_page = next;
     
     let mut tactics_block: &str = "";
     npc_page = skip_to(npc_page, "id=\"Tattiche");
     if npc_page != GLOBAL_NULL
     {
-        let (tactics_block_tmp, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "<h2>".to_string());
+        let (tactics_block_tmp, next) = get_slice_inside_tags(npc_page, "<p>", "<h2>");
         tactics_block = tactics_block_tmp;
         npc_page = next;
     }
     else { npc_page = next; }
     
     npc_page = skip_to(npc_page, "id=\"Statistiche");
-    let (stats_block, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "</p>".to_string());
+    let (stats_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
     npc_page = next;
     
     let mut specials_block: &str = "";
     npc_page = skip_to(npc_page, "id=\"Capacità_Speciali");
     if npc_page != GLOBAL_NULL
     {
-        let (specials_block_tmp, next) = get_slice_inside_tags(npc_page, "<h3>".to_string(), "<h2><span class=\"mw-headline\" id=\"Descrizione".to_string());
+        let (specials_block_tmp, next) = get_slice_inside_tags(npc_page, "<h3>", "<h2><span class=\"mw-headline\" id=\"Descrizione");
         specials_block = specials_block_tmp;
         npc_page = next;
     }
@@ -317,14 +331,14 @@ fn get_npc_page(orig_npc_page: &str, page_addr: String) -> NPC_Page
     npc_page = skip_to(npc_page, "id=\"Descrizione");
     if npc_page != GLOBAL_NULL
     {
-        let (desc_block_tmp, next) = get_slice_inside_tags(npc_page, "</h2>".to_string(), "<hr />".to_string());
+        let (desc_block_tmp, next) = get_slice_inside_tags(npc_page, "</h2>", "<hr />");
         desc_block = desc_block_tmp;
         npc_page = next;
     }
     else { npc_page = next; }
     
     npc_page = skip_to(npc_page, "<p>Fonte:");
-    //let (source_block, next) = get_slice_inside_tags(npc_page, "<p>".to_string(), "</p>".to_string());
+    //let (source_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
     let (source_block, next) = get_until(npc_page, "</p>");
     
     // NOTE: Now we parse the sub sections.
@@ -1519,6 +1533,9 @@ fn skip_to<'a>(data_slice: &'a str, tag: &str) -> &'a str
     return res.unwrap();
 }
 
+//TODO: Because I'm removing something that is possibly in the middle of a string,
+//      I can't avoid constructing a new string to remove that range, but
+//      Maybe I can find some smarter way to deal with this?
 fn clear_tag(data_slice: &str, tag_begin: &str, tag_end: &str) -> String {
     
     let begin_idx = data_slice.find(tag_begin);
@@ -1533,10 +1550,10 @@ fn clear_tag(data_slice: &str, tag_begin: &str, tag_end: &str) -> String {
     return result_slice;
 }
 
-fn get_slice_inside_tags(data_slice: &str, tag_begin: String, tag_end: String) -> (&str, &str) {
+fn get_slice_inside_tags<'a>(data_slice: &'a str, tag_begin: &str, tag_end: &str) -> (&'a str, &'a str) {
     
-    let begin_idx = data_slice.find(&tag_begin);
-    let end_idx   = data_slice.find(&tag_end);
+    let begin_idx = data_slice.find(tag_begin);
+    let end_idx   = data_slice.find(tag_end);
     
     if begin_idx.is_none() { return ("", ""); }
     if end_idx.is_none()   { return ("", ""); }
@@ -1882,7 +1899,8 @@ fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
     let offset_begin = mob_body_opt.find("<h1>");
     if offset_begin.is_none() {
         println!("[ERROR] Probably non-mob page: {}", page_path);
-        panic!();
+        return vec![];
+        //panic!();
     }
     
     let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
@@ -1981,6 +1999,7 @@ fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
     return pages;
 }
 
+/*
 fn getArrayOfPaths(database_path: &str) -> Vec<String>
 {
     let mut body = isahc::get(database_path).unwrap().text().unwrap();
@@ -2008,6 +2027,60 @@ fn getArrayOfPaths(database_path: &str) -> Vec<String>
         }
         
         next_slice_index = next_slice.unwrap().find("href=");
+    }
+    
+    return array_of_paths;
+}
+*/
+
+fn getArrayOfPaths(database_path: &str) -> Vec<String>
+{
+    let mut body = isahc::get(database_path).unwrap().text().unwrap();
+    
+    let table_offset = body.find("wiki_table_filter").unwrap();
+    let table_slice  = body.get((table_offset - 11)..).unwrap();
+    
+    let offset  = table_slice.find("<tbody>").unwrap();
+    let slice_1 = table_slice.get(offset..).unwrap();
+    
+    let offset_end = slice_1.find("</tbody>").unwrap();
+    let slice_of_page = slice_1.get(..(offset_end+8));
+    
+    let base_url = "https://golarion.altervista.org";
+    let mut array_of_paths = vec![];
+    
+    //NOTE: Skip the first <tr>
+    let first_tr  = slice_of_page.unwrap().get(slice_of_page.unwrap().find("<tr>").unwrap()+1..);
+    let mut curr_tr = first_tr.unwrap().get(first_tr.unwrap().find("<tr>").unwrap()+1..);
+    if curr_tr.is_none() { println!("[ERROR] can't find beginning of table"); panic!(); }
+    
+    let (mut curr_cell, _) = get_slice_inside_tags(curr_tr.unwrap(), "<td>", "</td>");
+    
+    while !curr_cell.is_empty()
+    {
+        let mut next_slice_index = curr_cell.find("href=");
+        let mut next_slice = curr_cell;
+        
+        while next_slice_index.is_some()
+        {
+            let link_slice  = next_slice.get((next_slice_index.unwrap() + 1)..);
+            if link_slice.is_none() { println!("[ERROR] can't find link"); panic!(); }
+            next_slice = link_slice.unwrap();
+            
+            let page_path  = get_path_from_slice(link_slice.unwrap());
+            if page_path.is_some() {
+                let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
+                array_of_paths.push(s_to_push);
+            }
+            
+            next_slice_index = link_slice.unwrap().find("href=");
+        }
+        
+        let next_tr_index = curr_tr.unwrap().find("<tr>");
+        if next_tr_index.is_none() { return array_of_paths; }
+        
+        curr_tr = curr_tr.unwrap().get(next_tr_index.unwrap()+1..);
+        (curr_cell, _) = get_slice_inside_tags(curr_tr.unwrap(),  "<td>", "</td>");
     }
     
     return array_of_paths;
@@ -2517,7 +2590,7 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
         result_file.write_all(&byte_padding);
     }
     
-    
+    println!("", );
     println!("Total Mob Get Pages Time:     {} ms", total_mob_get_pages_time);
     println!("Total Mob Create Entity Time: {} ms", total_mob_create_entry_time);
     
