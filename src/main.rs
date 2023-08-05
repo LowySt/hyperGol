@@ -2282,6 +2282,9 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
     }
     println!("End NPCs");
     
+    println!("Mob Count: {}", mob_entries_vec.len());
+    println!("NPC Count: {}", npc_entries_vec.len());
+    
     let mut total_size : usize = 0;
     
     total_size += buf_context.string.len();
