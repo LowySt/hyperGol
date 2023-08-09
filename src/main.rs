@@ -742,7 +742,6 @@ fn create_mob_entry(cache: &mut VectorCache,
     page.source = check_unwrap!(page.source.get(7..), file_idx, head_arr[0]).to_string();
     
     
-    
     //NOTE:Profiliing ----------------------------------------------
     unsafe { create_mob_entry_prepare_time += cme_now.elapsed().as_millis(); }
     //--------------------------------------------------------------
@@ -1935,16 +1934,6 @@ fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
 fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
 {
     let mut has_two_pages = false;
-    /*
-    let mut mob_body_opt = isahc::get(page_path);
-    if mob_body_opt.is_err()
-    {
-        println!("Retry on error {:?}", mob_body_opt.err());
-        mob_body_opt = isahc::get(page_path);
-    }
-    
-    let mob_body_opt = mob_body_opt.unwrap().text().unwrap();
-    */
     
     let offset_begin = mob_body_opt.find("<h1>");
     if offset_begin.is_none() {
@@ -1998,40 +1987,6 @@ fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
     
     return pages;
 }
-
-/*
-fn getArrayOfPaths(database_path: &str) -> Vec<String>
-{
-    let mut body = isahc::get(database_path).unwrap().text().unwrap();
-    
-    let offset  = body.find("wiki_table_filter").unwrap();
-    let slice_1 = body.get((offset - 11)..).unwrap();
-    
-    let offset_end = slice_1.find("</table>").unwrap();
-    let slice_of_page = slice_1.get(..(offset_end+8));
-    
-    let base_url = "https://golarion.altervista.org";
-    let mut array_of_paths = vec![];
-    
-    let mut next_slice_index = slice_of_page.unwrap().find("href=");
-    let mut next_slice = slice_of_page;
-    while next_slice_index.is_some() && next_slice.is_some()
-    {
-        next_slice = next_slice.unwrap().get((next_slice_index.unwrap() + 1)..);
-        if next_slice.is_none() { println!("[ERROR]"); panic!(); }
-        
-        let page_path   = get_path_from_slice(next_slice.unwrap());
-        if page_path.is_some() {
-            let s_to_push = base_url.to_string().clone() + &page_path.unwrap().to_string();
-            array_of_paths.push(s_to_push);
-        }
-        
-        next_slice_index = next_slice.unwrap().find("href=");
-    }
-    
-    return array_of_paths;
-}
-*/
 
 fn getArrayOfPaths(database_path: &str) -> Vec<String>
 {
@@ -2435,6 +2390,8 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
     result_file.write_all(&buf_context.environment.to_bytes());
     result_file.write_all(&buf_context.specials.to_bytes());
     
+    let size_before_entries = result_file.stream_position().unwrap();
+    
     //NOTE: Write Mob Entries
     let mob_vec_len = mob_entries_vec.len() as u32;
     result_file.write_all([mob_vec_len].as_byte_slice());
@@ -2510,7 +2467,7 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
     
     let byte_padding = [0u8, 0u8];
     
-    //NOTE: Write NpC Entries
+    //NOTE: Write NPC Entries
     let npc_vec_len = npc_entries_vec.len() as u32;
     result_file.write_all([npc_vec_len].as_byte_slice());
     
@@ -2590,16 +2547,18 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
         result_file.write_all(&byte_padding);
     }
     
-    println!("", );
-    println!("Total Mob Get Pages Time:     {} ms", total_mob_get_pages_time);
-    println!("Total Mob Create Entity Time: {} ms", total_mob_create_entry_time);
+    let size_after_entries = result_file.stream_position().unwrap();
+    
+    println!("Total Bytes for Entries:         {}", size_after_entries - size_before_entries);
+    println!("Total Mob Get Pages Time:        {} ms", total_mob_get_pages_time);
+    println!("Total Mob Create Entity Time:    {} ms", total_mob_create_entry_time);
     
     unsafe { println!("Prepare Mob Entry Time: {} ms", create_mob_entry_prepare_time); };
     unsafe { println!("BufferMob Entry Time:   {} ms", create_mob_entry_buffer_time); };
     
-    println!("Total NPC Get Pages Time:     {} ms", total_npc_get_pages_time);
-    println!("Total NPC Create Entity Time: {} ms", total_npc_create_entry_time);
-    println!("Elapsed:                      {} ms", now.elapsed().as_millis());
+    println!("Total NPC Get Pages Time:        {} ms", total_npc_get_pages_time);
+    println!("Total NPC Create Entity Time:    {} ms", total_npc_create_entry_time);
+    println!("Elapsed:                         {} ms", now.elapsed().as_millis());
     
     Ok(())
 }
