@@ -69,7 +69,7 @@ static BLACKLIST: [&str; 120] =
 ["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria", "/wiki/Kassen", "/wiki/Tian_Xia", "/wiki/Magnimar", "/wiki/Primo_Mondo", "/wiki/Piano_Astrale", "/wiki/La_Fossa_Storval", "/wiki/Possedimenti_di_Belkzen"];
 */
 
-static BLACKLIST: [&str; 58] = 
+static BLACKLIST: [&str; 61] = 
 ["/wiki/Dinosauro", "/wiki/Gremlin", "/wiki/Formian", "/wiki/Leshy", "/wiki/Meccanico", "/wiki/Popolo_Oscuro",
  "/wiki/Diavolo", "/wiki/Demone", "/wiki/Pesce", "/wiki/Agathion", "/wiki/Angelo", "/wiki/Arconte",
  "/wiki/Asura", "/wiki/Azata", "/wiki/Daemon", "/wiki/Div", "/wiki/Drago", "/wiki/Eone", "/wiki/Inevitabile",
@@ -79,7 +79,7 @@ static BLACKLIST: [&str; 58] =
  "/wiki/Sfinge", "/wiki/Caccia_Selvaggia", "/wiki/Ombra_Notturna", "/wiki/Manasaputra", "/wiki/Siktempora", "/wiki/Calamit%C3%A0", "/wiki/Demodand", "/wiki/Linnorm", "/wiki/Araldo", "/wiki/Colosso", "/wiki/Behemoth", 
  "/wiki/Idra", "/wiki/Signore_dei_Qlippoth", "/wiki/Progenie_di_Rovagug", "/wiki/Kaiju", "/wiki/Arcidiavolo", 
  "/wiki/Signore_dei_Demoni", "/wiki/Signore_Empireo", "/wiki/Grande_Antico", "/wiki/Kyton#Kyton_Demagogo", 
- "/wiki/Cavaliere_dell%27Apocalisse", ];
+ "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/File:35.png", "/wiki/Idolo", "/wiki/Azi"];
 
 static NPC_BLACKLIST: [&str; 71] = 
 ["/wiki/Umano", "/wiki/Adepto", "/wiki/Combattente", "/wiki/Esperto", "/wiki/Mezzelfo", "/wiki/Popolano",
@@ -2272,7 +2272,7 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
-        //for file_idx in 86..87
+        //for file_idx in 0..800
     {
 		/*
 if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" {
@@ -2297,6 +2297,7 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
     
     println!("Start NPCs");
     for file_idx in 0..array_of_npc_paths.len()
+        //for file_idx in 0..10
     {
         let mut pages = get_npc_page_array(&raw_page_vec[file_idx], &array_of_npc_paths[file_idx]);
         
