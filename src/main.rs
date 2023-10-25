@@ -11,48 +11,25 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::collections::hash_map::DefaultHasher;
 use bytebuffer::ByteBuffer;
 use widestring::Utf32String;
 use byte_slice_cast::*;
 use byteorder::{ByteOrder, LittleEndian};
-/*
-Current Time ~620 seconds for whole thing
 
-For 100 Mobs + 100 NPCs
-Total Mob Page Array Time:     15 seconds
-    Total Single Mob Page Time:     0 seconds
-  Total Get Page Time:           15 seconds
-  Total Find Pieces Time:         0 seconds
-Total Mob Create Entity Time:   0 seconds
-Total NPC Page Array Time:     15 seconds
-Total Single NPC Page Time:     0 seconds
-Total NPC Create Entity Time:   0 seconds
+// My shit
+pub mod skills;
+use crate::skills::*;
 
+pub mod pages;
+use crate::pages::*;
 
+pub mod parse_util;
+use crate::parse_util::*;
 
-All Mobs and NPCs with Concurrent Requests and CachedIndex on some things
-Elapsed:                      78 seconds
+pub mod vec_cache;
+use crate::vec_cache::*;
 
-Total Mob Get Pages Time:     27 seconds
-Total Mob Create Entity Time: 10 seconds
-Prepare Mob Entry Time:        0 seconds
-BufferMob Entry Time:         10 seconds
-Total NPC Get Pages Time:      5 seconds
-Total NPC Create Entity Time: 29 seconds
-
-Concurrent Requests and CachedIndex on all Mobs+NPCs strings
-Elapsed:                      48 seconds
-
-Total Mob Get Pages Time:     24 seconds
-Total Mob Create Entity Time: 10 seconds
-Prepare Mob Entry Time:        0 seconds
-BufferMob Entry Time:         10 seconds
-Total NPC Get Pages Time:      7 seconds
-Total NPC Create Entity Time:  1 seconds
-
+/* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
 Elapsed:                      34014 ms
 
@@ -62,11 +39,6 @@ Prepare Mob Entry Time:           0 ms
 BufferMob Entry Time:             0 ms
 Total NPC Get Pages Time:      6323 ms
 Total NPC Create Entity Time:     1 ms
-*/
-
-/*
-static BLACKLIST: [&str; 120] =
-["/wiki/Azata", "/wiki/Agathion", "/wiki/Div", "/wiki/Drago", "/wiki/Demone", "/wiki/Daemon", "/wiki/Arconte", "/wiki/Formian", "/wiki/Demodand", "/wiki/Golem", "/wiki/Diavolo", "/wiki/Calamit%C3%A0", "/wiki/Angelo", "/wiki/Gremlin", "/wiki/Signore_dei_Demoni", "/wiki/Grande_Antico", "/wiki/Dinosauro", "/wiki/Signore_Empireo", "/wiki/Arcidiavolo", "/wiki/Linnorm", "/wiki/Behemoth", "/wiki/Sahkil", "/wiki/Oni", "/wiki/Signore_dei_Qlippoth", "/wiki/Manasaputra", "/wiki/Eone", "/wiki/Asura", "/wiki/Meccanico", "/wiki/Ombra_Notturna", "/wiki/Colosso", "/wiki/Rakshasa", "/wiki/Inevitabile", "/wiki/Caccia_Selvaggia", "/wiki/Sfinge", "/wiki/Thriae", "/wiki/Qlippoth", "/wiki/Psicopompo", "/wiki/Leshy", "/wiki/Popolo_Oscuro", "/wiki/Kami", "/wiki/Kyton", "/wiki/Protean", "/wiki/Razza_Predatrice", "/wiki/Spirito_della_Casa", "/wiki/Tsukumogami", "/wiki/Wysp", "/wiki/Carnideforme", "/wiki/Pesce", "/wiki/Robot", "/wiki/Alveare", "/wiki/Idra", "/wiki/Kaiju", "/wiki/Cavaliere_dell%27Apocalisse", "/wiki/Animale", "/wiki/Goblinoide", "/wiki/Drago_Esterno", "/wiki/Dimensione_del_Tempo", "/wiki/Razze/Munavri", "/wiki/Inferno", "/wiki/Abaddon", "/wiki/Abisso", "/wiki/Piano_Etereo", "/wiki/Elysium", "/wiki/Arcadia", "/wiki/Castrovel", "/wiki/Vudra", "/wiki/Piaga_del_Mondo", "/wiki/Korvosa", "/wiki/Cheliax", "/wiki/Rahadoum", "/wiki/Garund", "/wiki/Paradiso", "/wiki/Kaer_Maga", "/wiki/Desolazioni_del_Mana", "/wiki/Ossario", "/wiki/Axis", "/wiki/Nuat", "/wiki/Osirion", "/wiki/Lande_Tenebrose", "/wiki/Piano_delle_Ombre", "/wiki/Fiume_Stige", "/wiki/Campo_delle_Fanciulle", "/wiki/Razmiran", "/wiki/Deserto_Piagamagica", "/wiki/Nirvana", "/wiki/Varisia", "/wiki/Katapesh", "/wiki/Distese_Mwangi", "/wiki/Piano_dell%27Energia_Negativa", "/wiki/Abaddon", "/wiki/Isola_Mediogalti", "/wiki/Piano_Elementale_della_Terra", "/wiki/Piano_Elementale_della_Terra", "/wiki/Dimensione_del_Tempo", "/wiki/Occhio_di_Abendego", "/wiki/Lande_Cineree", "/wiki/Crystilan", "/wiki/Xin-Edasseril", "/wiki/Numeria", "/wiki/Thassilon", "/wiki/Kalexcourt", "/wiki/Ustalav", "/wiki/Quantium", "/wiki/Casmaron", "/wiki/Foresta_Grungir", "/wiki/Piano_Materiale", "/wiki/Siktempora", "/wiki/Araldo", "/wiki/Progenie_di_Rovagug", "/wiki/Kyton#Kyton_Demagogo", "/wiki/Limbo", "/wiki/Piano_Elementale_dell%27Acqua", "/wiki/Piano_Elementale_dell%27Aria", "/wiki/Kassen", "/wiki/Tian_Xia", "/wiki/Magnimar", "/wiki/Primo_Mondo", "/wiki/Piano_Astrale", "/wiki/La_Fossa_Storval", "/wiki/Possedimenti_di_Belkzen"];
 */
 
 static BLACKLIST: [&str; 61] = 
@@ -140,257 +112,30 @@ macro_rules! check_unwrap
     }
 }
 
-/* NOTETODO: Currently NOT used
-static skills_name: [&str; _] = 
-["Acrobazia", "Addestrare Animali", "Artigianato", "Artista della Fuga", "Camuffare", "Cavalcare", "Conoscenze",
- "Diplomazia","Disattivare Congegni", "Furtività", "Guarire", "Intimidire", "Intrattenere", "Intuizione",
- "Linguistica", "Nuotare", "Percezione", "Professione", "Raggirare", "Rapidità di Mano", "Sapienza Magica",
- "Scalare", "Sopravvivenza", "Utilizzare Congegni Magici", "Valutare", "Volare"];
-*/
-
-#[derive(Debug)]
-struct Mob_Page {
-    page_addr: String,
-    
-    header:  String,
-    origin:  String,
-    class:   String,
-    misc:    String,
-    defense: String,
-    attack:  String,
-    stats:   String,
-    special: String,
-    ecology: String,
-    desc:    String,
-    source:  String,
-}
-
-fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
-{
-    let mut mob_page = orig_mob_page;
-    
-    let (mob_header, next) = get_slice_inside_tags(mob_page, "<h1>", "</h1>");
-    mob_page = next;
-    
-    let (race_class_info_pre, next) = get_slice_inside_tags(mob_page, "<div class=\"mw-collapsible mw-collapsed\">", "</div>");
-    mob_page = next;
-    
-    let (origin_info, race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
-    
-    let (misc_info, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
-    mob_page = next;
-    
-    mob_page = skip_to(mob_page, "id=\"Difesa");
-    let (defense_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
-    mob_page = next;
-    
-    mob_page = skip_to(mob_page, "id=\"Attacco");
-    let (attack_block, next) = get_slice_inside_tags(mob_page, "<p>", "<h2>");
-    mob_page = next;
-    
-    mob_page = skip_to(mob_page, "id=\"Statistiche");
-    let (stats_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
-    mob_page = next;
-    
-    let mut specials_block: &str = "";
-    
-    mob_page = skip_to(mob_page, "id=\"Capacità_Speciali");
-    if mob_page == GLOBAL_NULL 
-    {
-        mob_page = skip_to(next, "id=\"Ecologia");
-    }
-    else
-    {
-        let (specials_block_tmp, next) = get_slice_inside_tags(mob_page, "<h3>", "<h2><span class=\"mw-headline\" id=\"Ecologia");
-        specials_block = specials_block_tmp;
-        mob_page = next;
-    }
-    
-    let (ecology_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
-    mob_page = next;
-    
-    mob_page = skip_to(mob_page, "id=\"Descrizione");
-    let (desc_block, next) = get_slice_inside_tags(mob_page, "</h2>", "<hr />");
-    mob_page = next;
-    
-    let (source_block, next) = get_slice_inside_tags(mob_page, "<p>", "</p>");
-    
-    // NOTE: Now we parse the sub sections.
-    let mut specials = String::new();
-    
-    let head         = clear_all_tags(mob_header);
-    let mut origin   = clear_all_tags(origin_info);
-    let class        = clear_all_tags(race_class_info);
-    let misc         = clear_all_tags(misc_info);
-    let defense      = clear_all_tags(defense_block);
-    let attack       = clear_all_tags(attack_block);
-    let stats        = clear_all_tags(stats_block);
-    if !specials_block.is_empty() { specials = clear_all_tags(specials_block); }
-    let ecology      = clear_all_tags(ecology_block);
-    let mut desc     = clear_all_tags(desc_block);
-    let mut source   = clear_all_tags(source_block);
-    
-    if !origin.is_empty() { origin = origin.trim().to_string(); }
-    if !desc.is_empty()   { desc = desc.trim().to_string(); }
-    
-    let mut res = Mob_Page { page_addr: page_addr,
-        header: head, origin: origin, class: class, misc: misc,
-        defense: defense, attack: attack, stats: stats, special: specials, 
-        ecology: ecology, desc: desc, source: source };
-    
-    return (res, next.trim());
-}
-
-//TODO: Merge this with mob page in the future
-#[derive(Debug)]
-struct NPC_Page {
-    page_addr: String,
-    
-    header:  String,
-    origin:  String,
-    class:   String,
-    misc:    String,
-    defense: String,
-    attack:  String,
-    tactics: String,
-    stats:   String,
-    special: String,
-    desc:    String,
-    source:  String,
-}
-
-fn get_npc_page(orig_npc_page: &str, page_addr: String) -> NPC_Page
-{
-    let mut npc_page = orig_npc_page;
-    
-    let (npc_header, next) = get_slice_inside_tags(npc_page, "<h1>", "</h1>");
-    npc_page = next;
-    
-    let (race_class_info_pre, next) = get_slice_inside_tags(npc_page, "<div class=\"mw-collapsible mw-collapsed\">", "</div>");
-    npc_page = next;
-    
-    let (mut origin_info, mut race_class_info) = get_until(&race_class_info_pre, "<br /><i>");
-    
-    //NOTE: This means there is no description, but we still don't know if there is no origin
-    //      We need to check for Allineamento and see how far away it is from race_class_info_pre.
-    //      If it is far enough away (more than 3 characters of a tag) we have an origin, otherwise
-    //      origin stays empty.
-    if origin_info == GLOBAL_NULL
-    {
-        let mut alignIndex = race_class_info_pre.find("<b>Allineamento").unwrap();
-        
-        //NOTE: Means we are far away from the beginning of race_class_info_pre
-        //      which means there has to be an origin
-        if alignIndex > 3
-        {
-            origin_info     = race_class_info_pre.get(..alignIndex).unwrap();
-            race_class_info = race_class_info_pre.get(alignIndex..).unwrap();
-        }
-        else //NOTE: There is no origin, only race_class_info
-        {
-            race_class_info = race_class_info_pre;
-        }
-    }
-    
-    let (misc_info, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
-    npc_page = next;
-    
-    npc_page = skip_to(npc_page, "id=\"Difesa");
-    let (defense_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
-    npc_page = next;
-    
-    npc_page = skip_to(npc_page, "id=\"Attacco");
-    let (attack_block, next) = get_slice_inside_tags(npc_page, "<p>", "<h2>");
-    npc_page = next;
-    
-    let mut tactics_block: &str = "";
-    npc_page = skip_to(npc_page, "id=\"Tattiche");
-    if npc_page != GLOBAL_NULL
-    {
-        let (tactics_block_tmp, next) = get_slice_inside_tags(npc_page, "<p>", "<h2>");
-        tactics_block = tactics_block_tmp;
-        npc_page = next;
-    }
-    else { npc_page = next; }
-    
-    npc_page = skip_to(npc_page, "id=\"Statistiche");
-    let (stats_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
-    npc_page = next;
-    
-    let mut specials_block: &str = "";
-    npc_page = skip_to(npc_page, "id=\"Capacità_Speciali");
-    if npc_page != GLOBAL_NULL
-    {
-        let (specials_block_tmp, next) = get_slice_inside_tags(npc_page, "<h3>", "<h2><span class=\"mw-headline\" id=\"Descrizione");
-        specials_block = specials_block_tmp;
-        npc_page = next;
-    }
-    else { npc_page = next; }
-    
-    let mut desc_block: &str = "";
-    npc_page = skip_to(npc_page, "id=\"Descrizione");
-    if npc_page != GLOBAL_NULL
-    {
-        let (desc_block_tmp, next) = get_slice_inside_tags(npc_page, "</h2>", "<hr />");
-        desc_block = desc_block_tmp;
-        npc_page = next;
-    }
-    else { npc_page = next; }
-    
-    npc_page = skip_to(npc_page, "<p>Fonte:");
-    //let (source_block, next) = get_slice_inside_tags(npc_page, "<p>", "</p>");
-    let (source_block, next) = get_until(npc_page, "</p>");
-    
-    // NOTE: Now we parse the sub sections.
-    let mut specials = String::new();
-    
-    let head         = clear_all_tags(npc_header);
-    let mut origin   = clear_all_tags(origin_info);
-    let class        = clear_all_tags(race_class_info);
-    let misc         = clear_all_tags(misc_info);
-    let defense      = clear_all_tags(defense_block);
-    let attack       = clear_all_tags(attack_block);
-    let tactics      = clear_all_tags(tactics_block);
-    let stats        = clear_all_tags(stats_block);
-    if !specials_block.is_empty() { specials = clear_all_tags(specials_block); }
-    let mut desc     = clear_all_tags(desc_block);
-    let mut source   = clear_all_tags(source_block);
-    
-    if !origin.is_empty() { origin = origin.trim().to_string(); }
-    if !desc.is_empty()   { desc = desc.trim().to_string(); }
-    
-    let mut res = NPC_Page { page_addr: page_addr, 
-        header: head, origin: origin, class: class, misc: misc,
-        defense: defense, attack: attack, tactics: tactics, 
-        stats: stats, special: specials, desc: desc, source: source };
-    
-    return res;
-}
-
 struct Buffer_Context
 {
     string         : ByteBuffer,
     number         : ByteBuffer,
     name           : ByteBuffer,
-    gs             : ByteBuffer,
-    pe             : ByteBuffer,
-    alignment      : ByteBuffer,
+    gs             : ByteBuffer, //TODO: Incorporate into string
+    pe             : ByteBuffer, //TODO: Incorporate into string
+    alignment      : ByteBuffer, //TODO: Incorporate into string
     types          : ByteBuffer,
     subtypes       : ByteBuffer,
     archetypes     : ByteBuffer,
-    sizes          : ByteBuffer,
+    sizes          : ByteBuffer, //TODO: Incorporate into string
     senses         : ByteBuffer,
     auras          : ByteBuffer,
     immunities     : ByteBuffer,
     resistances    : ByteBuffer,
     weaknesses     : ByteBuffer,
-    special_attack : ByteBuffer,
-    spells         : ByteBuffer,
+    special_attack : ByteBuffer, //TODO: Remove. Not used
+    spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
     talents        : ByteBuffer,
     skills         : ByteBuffer,
-    languages      : ByteBuffer,
+    languages      : ByteBuffer, //TODO: Investigate. This seems too big
     specials       : ByteBuffer,
-    environment    : ByteBuffer,
+    environment    : ByteBuffer, //TODO: Incorporate into string
 }
 
 #[derive(Debug)]
@@ -624,79 +369,16 @@ fn create_mob_entry(cache: &mut VectorCache,
         talent_count = flatten_str_list(&mut stats_arr, 4, ", ");
     }
     
+    //println!("{:#?}", head_arr[0]);
+    
     let mut skill_count = 0;
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
     {
-        let mut skill_paren_index = stats_arr[5+skill_off].find("(");
-        
-        if skill_paren_index.is_none()
-        {
-            skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
-        }
-        else
-        {
-    		let mut base = stats_arr.remove(5 + skill_off);
-            
-            loop 
-            {
-				let mut skill_curr_off = 5 + skill_off + skill_count;
-				let mut effective_paren_index = 999999;
-				let mut skill_paren_c_index   = 9999999;
-                
-           	 let skill_paren_c_index_opt = base.find(")");
-				if skill_paren_index.is_some() { 
-					effective_paren_index = skill_paren_index.unwrap();
-					if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
-					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
-				}
-                
-                let skill_comma_index = base.find(", ");
-                if skill_comma_index.is_none() { 
-					//No more fields, add the last element and quit
-					stats_arr.insert(skill_curr_off, base);
-					skill_count += 1;
-					break; 
-				}
-                
-                if skill_comma_index.unwrap() < effective_paren_index
-                {
-                    //NOTE: All good, we are not inside the parens
-					let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
-					let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
-					stats_arr.insert(skill_curr_off, new_skill);
-					skill_count += 1;
-                    base = next;
-					skill_paren_index = base.find("(");
-					continue;
-                }
-                else
-                {
-                    //TODO: If the comma is after the close paren we don't actually need to do this!
-                    let after_paren_idx = base[skill_paren_c_index..].find(", ");
-					if after_paren_idx.is_none() {
-						//No more fields, add the last element and quit
-						stats_arr.insert(skill_curr_off, base);
-						skill_count += 1;
-						break;
-					}
-                    
-					let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
-					let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
-					stats_arr.insert(skill_curr_off, new_skill);
-					skill_count += 1;
-					base = next;
-					skill_paren_index = base.find("(");
-					continue;
-                }
-            }
-        }
+        skill_count = prepare_skill_str(&mut stats_arr, &page, skill_off);
     }
     
-    /*
-    if page.page_addr == "https://golarion.altervista.org/wiki/Malziarax" {
-        for ijk in 0..skill_count { println!("{:#?}, ", stats_arr[5+skill_off+ijk]); }
-    }*/
+    //for ijk in 0..skill_count { println!("\t{:#?}", stats_arr[5+skill_off+ijk]); }
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -853,8 +535,179 @@ fn create_mob_entry(cache: &mut VectorCache,
     for t in 0..talent_count
     { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
+    //TODO: make skills cool: 25965
+    // FIX Herne  Conoscenze (geografia) +6 (+8 nelle foreste)
+    //println!("{:#?}:", head_arr[0]);
     for s in 0..skill_count
-    { skills_idx[s]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
+    { 
+        let num_value_check: &[_] = &['+', '-'];
+        let trim_check: &[_] = &[' ', ',', ';', '.'];
+        
+        if(stats_arr[10+s+skill_off] != "-")
+        {
+            if let Some((paren_block, paren_begin_idx, paren_end_idx)) = slice_between_inclusive(stats_arr[10+s+skill_off], "(", ")")
+            {
+                let mut skill_type       = [0u16; 24];
+                let mut skill_value      = [-999i16; 24]; //TODO: Use -999 by default as sentinel value
+                let mut skill_entry: u16 = 0;
+                
+                //let mut inside_paren = stats_arr[10+s+skill_off][complex_skill_idx+1..].to_lowercase();
+                let mut inside_paren = paren_block.to_lowercase();
+                let mut subskill_count = 0;
+                for subskill_idx in 0..(Skill_Names::UnoQualsiasi as u16)
+                {
+                    let subskill_name = &Skill_Names::from_u16(subskill_idx).as_str();
+                    if(inside_paren.contains(subskill_name))
+                    {
+                        //NOTE: Found one
+                        skill_type[subskill_count+1] = subskill_idx;
+                        
+                        //NOTE: Check for extra value. Is this good enough?
+                        if let Some(subskill_val) = inside_paren.find(num_value_check)
+                        {
+                            let subskill_val_str = inside_paren[subskill_val..].split_once(' ');
+                            match(subskill_val_str)
+                            {
+                                Some(v_str) =>
+                                {
+                                    skill_value[subskill_count+1] = v_str.0
+                                        .trim_matches(trim_check)
+                                        .parse::<i16>()
+                                        .unwrap_or_else(|_| panic!("{:#?}\n[ERROR] couldn't parse value: {:#?}", head_arr[0], v_str.0));
+                                    
+                                    inside_paren = v_str.1.replace(subskill_name, "");
+                                }
+                                
+                                None =>
+                                {
+                                    panic!("Couldn't find end of value: {:#?}", inside_paren);
+                                }
+                            }
+                            
+                        }
+                        else
+                        {
+                            inside_paren = inside_paren.replace(subskill_name, "");
+                        }
+                        
+                        subskill_count += 1;
+                    }
+                }
+                
+                if(subskill_count == 0)
+                {
+                    /*TODO: When the time comes!
+                    skill_entry = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]) as u16;
+                    skill_entry |= 0x8000;
+    */
+                    //println!("{:#?}:", head_arr[0]);
+                    println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                }
+                else
+                {
+                    let without_paren = stats_arr[10+s+skill_off].replace(paren_block, "");
+                    
+                    let mut name_check = "";
+                    if let Some(v) = split_off(&without_paren, "+-")
+                    {
+                        name_check = v.0.trim();
+                        let skill_value_opt = v.1
+                            .trim_matches(trim_check)
+                            .parse::<i16>();
+                        
+                        if(skill_value_opt.is_err())
+                        {
+                            println!("{:#?}:", head_arr[0]);
+                            println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                            println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                            //TODO Do the interning
+                        }
+                        else
+                        {
+                            skill_value[0] = skill_value_opt.unwrap();
+                        }
+                    }
+                    else
+                    {
+                        assert!(false, "Couldn't find +/- in {without_paren:#?}");
+                    }
+                    
+                    if(skill_value[0] != -999)
+                    {
+                        skill_type[0] = Skill_Names::from_str(name_check);
+                        assert!(skill_type[0] != 0xffff, "Looking for: {:#?} in {:#?}", name_check, stats_arr[10+s+skill_off]);
+                        
+                        skill_entry = skill_type[0] | ((skill_value[0] & 0x007F) << 7) as u16;
+                        skill_entry |= 0x4000;
+                        
+                        //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type[0], skill_value[0], skill_entry);
+                        
+                        for subskill_idx in 0..subskill_count
+                        {
+                            //NOTE: All the skill entries
+                            //println!("\t\t{:#?} {:#?}", Skill_Names::from_u16(skill_type[subskill_idx+1]), skill_value[subskill_idx+1]);
+                        }
+                    }
+                    else
+                    {
+                        //TODO: Probably do the interning?
+                        println!("{:#?}:", head_arr[0]);
+                        println!("[ERROR] couldn't parse value: {:#?}", without_paren);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                    }
+                }
+            }
+            else
+            {
+                let mut skill_type:  u16 = 0;
+                let mut skill_value: i16 = -999;
+                let mut skill_entry: u16 = 0;
+                
+                let mut name_check: &str = "";
+                
+                if let Some(v) = split_off(stats_arr[10+s+skill_off], "+-")
+                {
+                    //TODO: In this case there's no paren block. Which means a type without a value should be
+                    //      Impossible, and if present it's an error in the source. Change this?
+                    name_check = v.0.trim();
+                    let skill_value_opt = v.1.trim_matches(trim_check).parse::<i16>();
+                    if(skill_value_opt.is_err())
+                    {
+                        println!("{:#?}:", head_arr[0]);
+                        println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        //TODO Do the interning
+                    }
+                    else
+                    {
+                        skill_value = skill_value_opt.unwrap();
+                    }
+                }
+                
+                if(skill_value != -999)
+                {
+                    skill_type = Skill_Names::from_str(name_check);
+                    if(skill_type == 0xffff)
+                    {
+                        //println!("{:#?}:", head_arr[0]);
+                        //println!("Invalid Type {:#?}", stats_arr[10+s+skill_off]);
+                    }
+                    else
+                    {
+                        skill_entry = skill_type | ((skill_value & 0x007F) << 7) as u16;
+                        //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type, skill_value, skill_entry);
+                    }
+                }
+                else
+                {
+                    //TODO: Probably do the interning?
+                }
+            }
+        }
+        
+        skills_idx[s] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]);
+    }
+    //println!("");
     
     for l in 0..lang_count
     { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
@@ -1210,58 +1063,58 @@ fn create_npc_entry(cache: &mut VectorCache,
         }
         else
         {
-    		let mut base = stats_arr.remove(5 + skill_off);
+            let mut base = stats_arr.remove(5 + skill_off);
             
             loop 
             {
-				let mut skill_curr_off = 5 + skill_off + skill_count;
-				let mut effective_paren_index = 999999;
-				let mut skill_paren_c_index   = 9999999;
+                let mut skill_curr_off = 5 + skill_off + skill_count;
+                let mut effective_paren_index = 999999;
+                let mut skill_paren_c_index   = 9999999;
                 
-           	 let skill_paren_c_index_opt = base.find(")");
-				if skill_paren_index.is_some() { 
-					effective_paren_index = skill_paren_index.unwrap();
-					if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
-					skill_paren_c_index = skill_paren_c_index_opt.unwrap();
-				}
+                let skill_paren_c_index_opt = base.find(")");
+                if skill_paren_index.is_some() { 
+                    effective_paren_index = skill_paren_index.unwrap();
+                    if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
+                    skill_paren_c_index = skill_paren_c_index_opt.unwrap();
+                }
                 
                 let skill_comma_index = base.find(", ");
                 if skill_comma_index.is_none() { 
-					//No more fields, add the last element and quit
-					stats_arr.insert(skill_curr_off, base);
-					skill_count += 1;
-					break; 
-				}
+                    //No more fields, add the last element and quit
+                    stats_arr.insert(skill_curr_off, base);
+                    skill_count += 1;
+                    break; 
+                }
                 
                 if skill_comma_index.unwrap() < effective_paren_index
                 {
                     //NOTE: All good, we are not inside the parens
-					let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
-					let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
-					stats_arr.insert(skill_curr_off, new_skill);
-					skill_count += 1;
+                    let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
+                    let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
+                    stats_arr.insert(skill_curr_off, new_skill);
+                    skill_count += 1;
                     base = next;
-					skill_paren_index = base.find("(");
-					continue;
+                    skill_paren_index = base.find("(");
+                    continue;
                 }
                 else
                 {
                     //TODO: If the comma is after the close paren we don't actually need to do this!
                     let after_paren_idx = base[skill_paren_c_index..].find(", ");
-					if after_paren_idx.is_none() {
-						//No more fields, add the last element and quit
-						stats_arr.insert(skill_curr_off, base);
-						skill_count += 1;
-						break;
-					}
+                    if after_paren_idx.is_none() {
+                        //No more fields, add the last element and quit
+                        stats_arr.insert(skill_curr_off, base);
+                        skill_count += 1;
+                        break;
+                    }
                     
-					let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
-					let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
-					stats_arr.insert(skill_curr_off, new_skill);
-					skill_count += 1;
-					base = next;
-					skill_paren_index = base.find("(");
-					continue;
+                    let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
+                    let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
+                    stats_arr.insert(skill_curr_off, new_skill);
+                    skill_count += 1;
+                    base = next;
+                    skill_paren_index = base.find("(");
+                    continue;
                 }
             }
         }
@@ -1498,494 +1351,6 @@ fn create_npc_entry(cache: &mut VectorCache,
     };
     
     return entry;
-}
-
-fn clear_all_tags(data_slice: &str) -> String {
-    
-    let mut result = String::from(data_slice);
-    loop
-    {
-        let begin = result.find("<");
-        if begin.is_none() { return result.replace("&#160;", " "); }
-        
-        let end = result.find(">");
-        if end.is_none() { println!("[ERROR] Malformed html?"); return "".to_string(); }
-        
-        if begin.unwrap() > end.unwrap() { println!("[ERROR] Bad assumption?"); return "".to_string(); }
-        
-        result.replace_range(begin.unwrap()..end.unwrap()+1, "");
-    }
-}
-
-static GLOBAL_NULL: &str = "";
-
-fn skip_to<'a>(data_slice: &'a str, tag: &str) -> &'a str
-{
-    let len = tag.len();
-    let begin = data_slice.find(tag);
-    
-    if begin.is_none() { return GLOBAL_NULL; }
-    
-    let res = data_slice.get((begin.unwrap() + len)..);
-    if res.is_none() { println!("[ERROR] Couldn't slice mob_page past tag {}", tag); return GLOBAL_NULL; }
-    
-    return res.unwrap();
-}
-
-//TODO: Because I'm removing something that is possibly in the middle of a string,
-//      I can't avoid constructing a new string to remove that range, but
-//      Maybe I can find some smarter way to deal with this?
-fn clear_tag(data_slice: &str, tag_begin: &str, tag_end: &str) -> String {
-    
-    let begin_idx = data_slice.find(tag_begin);
-    let end_idx   = data_slice.find(tag_end);
-    
-    if begin_idx.is_none() { return "".to_string(); }
-    if end_idx.is_none()   { return "".to_string(); }
-    
-    let mut result_slice = String::from(data_slice);
-    result_slice.replace_range(begin_idx.unwrap()..end_idx.unwrap(), "");
-    
-    return result_slice;
-}
-
-fn get_slice_inside_tags<'a>(data_slice: &'a str, tag_begin: &str, tag_end: &str) -> (&'a str, &'a str) {
-    
-    let begin_idx = data_slice.find(tag_begin);
-    let end_idx   = data_slice.find(tag_end);
-    
-    if begin_idx.is_none() { return ("", ""); }
-    if end_idx.is_none()   { return ("", ""); }
-    
-    let result    = data_slice.get(begin_idx.unwrap()+tag_begin.len()..end_idx.unwrap());
-    if result.is_none()    { return ("", ""); }
-    
-    let next_data = data_slice.get(end_idx.unwrap()+tag_end.len()..);
-    if next_data.is_none()    { return ("", ""); }
-    
-    return (result.unwrap(), next_data.unwrap());
-}
-
-fn get_until<'a>(data_slice: &'a str, until: &str) -> (&'a str, &'a str)
-{
-    let end_idx: usize;
-    let tag_len = until.len();
-    
-    if until.len() == 0 { end_idx = data_slice.len(); }
-    else
-    {
-        let index = data_slice.find(until);
-        if index.is_none() { return (GLOBAL_NULL, data_slice) }
-        
-        end_idx = index.unwrap();
-    }
-    
-    let result = data_slice.get(..end_idx);
-    if result.is_none() { println!("[ERROR] Malformed mob page\n"); panic!(); }
-    
-    let tag_len = until.len();
-    let next = data_slice.get(end_idx+tag_len..);
-    if next.is_none() { println!("[ERROR] Malformed mob page\n"); panic!(); }
-    
-    return (result.unwrap(), next.unwrap());
-}
-
-fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
-{
-    let mut result_arr = vec![];
-    
-    let mut next: &str = data_slice;
-    let mut el: &str;
-    let mut i: usize = 0;
-    
-    let mut missed_i: usize = 99;
-    
-    for i in 0..until.len()
-    {
-        (el, next) = get_until(next, until[i]);
-        
-        if el == GLOBAL_NULL && missed_i == 99 && i != 0 { missed_i = i; }
-        
-        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el.trim()); }
-        else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
-    }
-    
-    let (last, _) = get_until(next, "");
-    if missed_i == 99 { result_arr.push(last.trim()); }
-    else
-    { 
-        result_arr.insert(missed_i, last.trim());
-        result_arr.push(GLOBAL_NULL); //Push the last missed element.
-    }
-    
-    return result_arr;
-}
-
-fn fill_array_from_available_dbg<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>
-{
-    let mut result_arr = vec![];
-    
-    let mut next: &str = data_slice;
-    let mut el: &str;
-    let mut i: usize = 0;
-    
-    let mut missed_i: usize = 99;
-    
-    for i in 0..until.len()
-    {
-        (el, next) = get_until(next, until[i]);
-        
-        if el == GLOBAL_NULL && missed_i == 99 && i != 0 { missed_i = i; }
-        
-        if missed_i == 99 || el == GLOBAL_NULL { result_arr.push(el.trim()); }
-        else                                   { result_arr.insert(missed_i, el.trim()); missed_i = 99; }
-        
-        println!("{:#?}", result_arr);
-    }
-    
-    let (last, _) = get_until(next, "");
-    
-    if missed_i == 99 { result_arr.push(last.trim()); }
-    else
-    { 
-        result_arr.insert(missed_i, last.trim());
-        result_arr.push(GLOBAL_NULL); //Push the last missed element.
-    }
-    
-    println!("{:#?}", result_arr);
-    
-    return result_arr;
-}
-
-struct CachedIndex<T>
-{
-    hash: u64,
-    cursor: T,
-}
-
-struct VectorCache
-{
-    strings:     Vec::<CachedIndex::<u32>>,
-    numbers:     Vec::<CachedIndex::<u16>>,
-    names:       Vec::<CachedIndex::<u16>>, //TODO We are gonna surpass 16bits veery soon!
-    gs:          Vec::<CachedIndex::<u16>>,
-    pe:          Vec::<CachedIndex::<u16>>,
-    alignment:   Vec::<CachedIndex::<u16>>,
-    types:       Vec::<CachedIndex::<u16>>,
-    subtypes:    Vec::<CachedIndex::<u16>>,
-    archetypes:  Vec::<CachedIndex::<u16>>,
-    sizes:       Vec::<CachedIndex::<u16>>,
-    senses:      Vec::<CachedIndex::<u16>>,
-    auras:       Vec::<CachedIndex::<u16>>,
-    immunities:  Vec::<CachedIndex::<u16>>,
-    resistances: Vec::<CachedIndex::<u16>>,
-    weaknesses:  Vec::<CachedIndex::<u16>>,
-    special:     Vec::<CachedIndex::<u16>>,
-    spells:      Vec::<CachedIndex::<u32>>,
-    talents:     Vec::<CachedIndex::<u16>>,
-    skills:      Vec::<CachedIndex::<u32>>,
-    languages:   Vec::<CachedIndex::<u16>>,
-    specials:    Vec::<CachedIndex::<u32>>,
-    environment: Vec::<CachedIndex::<u16>>,
-}
-
-impl VectorCache
-{
-    fn new(pre_alloc: usize) -> VectorCache
-    {
-        let result = VectorCache {
-            strings:     Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            numbers:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            names:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            gs:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            pe:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            alignment:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            types:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            subtypes:    Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            archetypes:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            sizes:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            senses:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            auras:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            immunities:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            resistances: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            weaknesses:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            special:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            spells:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            talents:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            skills:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            languages:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            specials:    Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
-            environment: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-        };
-        return result;
-    }
-}
-
-fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
-{
-    let replace_shit = entry_data_str.replace("\u{2012}", "-");
-    let replace_shit = replace_shit.replace("\u{200b}", "");
-    let replace_shit = replace_shit.replace("\u{2011}", "-");
-    let replace_shit = replace_shit.replace("\u{2013}", "-");
-    let replace_shit = replace_shit.replace("\u{2014}", "-");
-    let replace_shit = replace_shit.replace("\u{2018}", "'");
-    let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let replace_shit = replace_shit.replace("\u{201c}", "\"");
-    let replace_shit = replace_shit.replace("\u{201d}", "\"");
-    let replace_shit = replace_shit.replace("\u{2026}", "...");
-    let replace_shit = replace_shit.replace("\u{2212}", "-");
-    let replace_shit = replace_shit.replace("\u{2800}", "");
-    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
-    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
-    let entry_data   = replace_shit.as_bytes();
-    let entry_len    = replace_shit.len();
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u32; }
-    
-    let mut hasher = DefaultHasher::new();
-    entry_data.hash(&mut hasher);
-    let hash = hasher.finish();
-    
-    for idx in 0..cache.len()
-    { 
-        if cache[idx].hash == hash { return cache[idx].cursor; }
-    }
-    
-    let mut cursor: usize = 0;
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u32 };
-    cache.push(cached_index);
-    
-    return cursor as u32;
-}
-
-fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
-{
-    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
-    let replace_shit = replace_shit.replace("\u{200b}", "");
-    let replace_shit = replace_shit.replace("\u{2011}", "-");
-    let replace_shit = replace_shit.replace("\u{2013}", "-");
-    let replace_shit = replace_shit.replace("\u{2014}", "-");
-    let replace_shit = replace_shit.replace("\u{2018}", "'");
-    let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let replace_shit = replace_shit.replace("\u{201c}", "\"");
-    let replace_shit = replace_shit.replace("\u{201d}", "\"");
-    let replace_shit = replace_shit.replace("\u{2026}", "...");
-    let replace_shit = replace_shit.replace("\u{2212}", "-");
-    let replace_shit = replace_shit.replace("\u{2800}", "");
-    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
-    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
-    let entry_data   = replace_shit.as_bytes();
-    let entry_len    = replace_shit.len();
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
-    
-    let mut hasher = DefaultHasher::new();
-    entry_data.hash(&mut hasher);
-    let hash = hasher.finish();
-    
-    for idx in 0..cache.len()
-    { 
-        if cache[idx].hash == hash { return cache[idx].cursor; }
-    }
-    
-    let mut cursor: usize = 0;
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u16 };
-    cache.push(cached_index);
-    
-    return cursor as u16;
-}
-
-fn add_entry_if_missing_dbg(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
-{
-    let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");
-    let replace_shit = replace_shit.replace("\u{200b}", "");
-    let replace_shit = replace_shit.replace("\u{2011}", "-");
-    let replace_shit = replace_shit.replace("\u{2013}", "-");
-    let replace_shit = replace_shit.replace("\u{2014}", "-");
-    let replace_shit = replace_shit.replace("\u{2018}", "'");
-    let replace_shit = replace_shit.replace("\u{2019}", "'");
-    let replace_shit = replace_shit.replace("\u{201c}", "\"");
-    let replace_shit = replace_shit.replace("\u{201d}", "\"");
-    let replace_shit = replace_shit.replace("\u{2026}", "...");
-    let replace_shit = replace_shit.replace("\u{2212}", "-");
-    let replace_shit = replace_shit.replace("\u{2800}", "");
-    let replace_shit = replace_shit.replace("\u{fb01}", "fi");
-    let replace_shit = replace_shit.replace("\u{fb02}", "fl");
-    let entry_data   = replace_shit.as_bytes();
-    let entry_len    = replace_shit.len();
-    
-    //NOTE: Index 0 means an empty entry.
-    if entry_len == 0 { return 0u16; }
-    
-    let mut hasher = DefaultHasher::new();
-    entry_data.hash(&mut hasher);
-    let hash = hasher.finish();
-    
-    for idx in 0..cache.len()
-    { 
-        if cache[idx].hash == hash { return cache[idx].cursor; }
-    }
-    
-    println!("{}", entry_data_str);
-    
-    let mut cursor: usize = 0;
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u16 };
-    cache.push(cached_index);
-    
-    return cursor as u16;
-}
-
-fn flatten_str_list(orig_arr: &mut Vec<&str>, list_idx: usize, delim: &str) -> usize
-{
-    let mut number_of_inserts = 0;
-    let mut base = orig_arr.remove(list_idx);
-    let mut idx = list_idx;
-    loop
-    {
-        let (new_el, next) = get_until(&base, delim);
-        base = next;
-        
-        if new_el == GLOBAL_NULL { break; }
-        orig_arr.insert(idx, new_el);
-        number_of_inserts += 1;
-        idx += 1;
-    }
-    
-    let (last_el, _next) = get_until(&base, "");
-    orig_arr.insert(idx, last_el);
-    number_of_inserts += 1;
-    
-    return number_of_inserts;
-}
-
-fn get_mob_page_array(mob_body_opt: &str, page_path: &str) -> Vec<Mob_Page>
-{
-    let offset_begin = mob_body_opt.find("<h1>");
-    if offset_begin.is_none() {
-        println!("[ERROR] Probably non-mob page: {}", page_path);
-        return vec![];
-        //panic!();
-    }
-    
-    let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
-    
-    let offset_end = begin_mob.find("<!--").unwrap();
-    let mob_page_tmp = begin_mob.get(..offset_end);
-    if mob_page_tmp.is_none() { println!("Could not do shit. Not a mob?"); panic!(); }
-    
-    let mob_page_tmp = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-    
-    let mut mob_page = mob_page_tmp.as_str();
-    
-    //NOTE: Let's try extracting entire tag blocks to parse the mob data
-    let mut num_pages = 1;
-    let (mut page_one, maybe_next) = get_mob_page(mob_page, page_path.to_string());
-    
-    let mut pages = Vec::new();
-    pages.push(page_one);
-    
-    let mut page_two: Mob_Page;
-    if maybe_next.len() > 3 {
-        let maybe_next_tmp = clear_tag(maybe_next, "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-        let mut maybe_next = maybe_next_tmp.as_str();
-        
-        (page_two, _) = get_mob_page(maybe_next, page_path.to_string());
-        pages.push(page_two);
-    }
-    
-    return pages;
-}
-
-fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
-{
-    let mut has_two_pages = false;
-    
-    let offset_begin = mob_body_opt.find("<h1>");
-    if offset_begin.is_none() {
-        println!("[ERROR] Probably non-npc page: {}", page_path);
-        panic!();
-    }
-    
-    let second_begin = mob_body_opt.rfind("<h1>");
-    if second_begin.is_some() && second_begin.unwrap() > offset_begin.unwrap() {
-        has_two_pages = true;
-    }
-    
-    let mut mob_page = String::new();
-    let mut second_page = String::new();
-    if has_two_pages
-    {
-        let mob_page_tmp = mob_body_opt.get(offset_begin.unwrap()..second_begin.unwrap());
-        if mob_page_tmp.is_none() { println!("Could not do shit in first page. Not a npc?"); panic!(); }
-        
-        mob_page = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-        
-        let second_page_begin_tmp = mob_body_opt.get(second_begin.unwrap()..).unwrap();
-        let second_end = second_page_begin_tmp.find("<!--").unwrap();
-        
-        let second_page_tmp = second_page_begin_tmp.get(..second_end);
-        if second_page_tmp.is_none() { println!("Second page didn't work."); panic!(); }
-        
-        second_page = clear_tag(second_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-    }
-    else
-    {
-        let begin_mob = mob_body_opt.get(offset_begin.unwrap()..).unwrap();
-        let offset_end = begin_mob.find("<!--").unwrap();
-        
-        let mob_page_tmp = begin_mob.get(..offset_end);
-        if mob_page_tmp.is_none() { println!("Could not do shit in first page. Not a npc?"); panic!(); }
-        
-        mob_page = clear_tag(mob_page_tmp.unwrap(), "<div class=\"toccolours mw-collapsible-content\"", "</div>");
-    }
-    
-    let page_one = get_npc_page(&mob_page, page_path.to_string());
-    
-    let mut pages = Vec::new();
-    pages.push(page_one);
-    
-    if has_two_pages
-    {
-        let page_two = get_npc_page(&second_page, page_path.to_string());
-        pages.push(page_two);
-    }
-    
-    return pages;
 }
 
 fn getArrayOfPaths(database_path: &str) -> Vec<String>
@@ -2272,9 +1637,9 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
-        //for file_idx in 0..800
+        //for file_idx in 1274..1277
     {
-		/*
+        /*
 if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" {
             println!("{:#?}", file_idx);
         }
@@ -2290,6 +1655,8 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
         }
     }
     println!("End Mobs");
+    
+    panic!();
     
     let garpn_now = Instant::now();
     raw_page_vec = get_all_raw_pages(&array_of_npc_paths);
