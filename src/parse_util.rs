@@ -82,6 +82,9 @@ slice_between_inclusive<'a>(source: &'a str, start: &'a str, end: &'a str) -> Op
     return None;
 }
 
+//NOTE: Works like split_at, but doesn't split an index, rather a delimiter
+//      Like split_once, but is inclusive of the delimiter on the second slice
+//TODO: Rename to something better, like split_once_inclusive, or split_at_delim
 pub fn split_off<'a>(source: &'a str, delim: &'a str) -> Option<(&'a str, &'a str)>
 {
     for c in delim.chars()
@@ -93,6 +96,105 @@ pub fn split_off<'a>(source: &'a str, delim: &'a str) -> Option<(&'a str, &'a st
     }
     
     return None;
+}
+
+//TODO: Rename to something better, like split_once_inclusive, or split_at_delim
+pub fn split_off_idx<'a>(source: &'a str, delim: &'a str) -> Option<(&'a str, &'a str, usize)>
+{
+    for c in delim.chars()
+    {
+        if let Some(idx) = source.find(c)
+        {
+            return Some((&source[..idx], &source[idx..], idx));
+        }
+    }
+    
+    return None;
+}
+
+
+//NOTE: Left is value (from sign to last digit), Right is rest
+//      This only works if the value is on the left side/right side of the base
+pub fn split_at_value<'a>(base: &'a str) -> Option<(i16, &'a str/*'*/)>
+{
+    let mut value: &str = "";
+    
+    //TODO: Do I like checking for the unicode character (which will be stripped anyway), or should I strip it
+    //      before hand? Probably better to strip later because I might not intern something here,
+    //      So the early stripping would be extra, unnecessary work.
+    if let Some((left, right, idx)) = split_off_idx(base, "+-\u{2013}")
+    {
+        let mut right_iter = right.char_indices().peekable();
+        
+        let (_, sign_c) = right_iter.next().unwrap(); //NOTE: Can't fail unwrap because split_off already checked it.
+        let start_idx = sign_c.len_utf8();
+        let mut end_idx = start_idx;
+        let mut sign = 1;
+        if sign_c == '-' || sign_c == '\u{2013}' { sign = -1; }
+        while let Some((value_idx, value_char)) = right_iter.peek() //NOTE: char_indices not needed?
+        {
+            if !value_char.is_digit(10) { break; }
+            
+            //NOTE: Consume only if it's still part of the value.
+            end_idx += value_char.len_utf8();
+            right_iter.next();
+        }
+        
+        if end_idx == start_idx { return None; } //NOTE: Means there's only the +/- character without anything else
+        
+        //NOTE: We parse the value right here, because of stupid unicode dashes
+        //      Skip the sign, we know if it's negative with the boolean is_minus
+        value = &right[start_idx..end_idx];
+        
+        if left.len() < 2
+        {
+            //NOTE: The value is on the left side of the base
+            let rest = &right[end_idx..];
+            let mut num_value: i16 = value.parse::<i16>()
+                .unwrap_or_else(|_| panic!("[ERROR] couldn't parse value: {:#?}", value));
+            num_value *= sign;
+            
+            assert!(num_value > -127 && num_value < 127, "Value out of range: {num_value}");
+            
+            return Some((num_value, rest));
+        }
+        else
+        {
+            if right.len() - end_idx > 2
+            {
+                //NOTE: Our value is right in the middle
+                //      Maybe we just return None in this case
+                return None;
+            }
+            
+            let mut num_value: i16 = value.parse::<i16>()
+                .unwrap_or_else(|_| panic!("[ERROR] couldn't parse value: {:#?}", value));
+            num_value *= sign;
+            
+            assert!(num_value > -127 && num_value < 127, "Value out of range, {num_value}");
+            
+            //NOTE: The value is on the right side of the base
+            return Some((num_value, left));
+        }
+    }
+    
+    //NOTE: No +/- sign was found.
+    //TODO: There could technically be a value without sign. Maybe handle this, by splitting of at numeric?
+    return None;
+}
+
+pub fn trim_str<'a>(base: &'a str, check: &[&str]) -> &'a str
+{
+    let mut result = base;
+    for i in check
+    {
+        if let Some(a) = base.strip_prefix(i)
+        {
+            result = a;
+        }
+    }
+    
+    return result;
 }
 
 pub fn clear_all_tags(data_slice: &str) -> String {

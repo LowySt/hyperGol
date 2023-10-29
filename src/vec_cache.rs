@@ -4,6 +4,32 @@ use std::collections::hash_map::DefaultHasher;
 use bytebuffer::ByteBuffer;
 use byte_slice_cast::*;
 
+pub struct Buffer_Context
+{
+    pub string         : ByteBuffer,
+    pub number         : ByteBuffer,
+    pub name           : ByteBuffer,
+    pub gs             : ByteBuffer, //TODO: Incorporate into string
+    pub pe             : ByteBuffer, //TODO: Incorporate into string
+    pub alignment      : ByteBuffer, //TODO: Incorporate into string
+    pub types          : ByteBuffer,
+    pub subtypes       : ByteBuffer,
+    pub archetypes     : ByteBuffer,
+    pub sizes          : ByteBuffer, //TODO: Incorporate into string
+    pub senses         : ByteBuffer,
+    pub auras          : ByteBuffer,
+    pub immunities     : ByteBuffer,
+    pub resistances    : ByteBuffer,
+    pub weaknesses     : ByteBuffer,
+    pub special_attack : ByteBuffer, //TODO: Remove. Not used
+    pub spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
+    pub talents        : ByteBuffer,
+    pub skills         : ByteBuffer,
+    pub languages      : ByteBuffer, //TODO: Investigate. This seems too big
+    pub specials       : ByteBuffer,
+    pub environment    : ByteBuffer, //TODO: Incorporate into string
+}
+
 pub struct CachedIndex<T>
 {
     hash: u64,
@@ -66,6 +92,60 @@ impl VectorCache
         };
         return result;
     }
+}
+
+pub fn dump_buffers(buf_context: &Buffer_Context)
+{
+    println!("Strings:     {}", buf_context.string.len());
+    println!("Number:      {}", buf_context.number.len());
+    println!("Name:        {}", buf_context.name.len());
+    println!("gs:          {}", buf_context.gs.len());
+    println!("pe:          {}", buf_context.pe.len());
+    println!("alignment:   {}", buf_context.alignment.len());
+    println!("types:       {}", buf_context.types.len());
+    println!("subtypes:    {}", buf_context.subtypes.len());
+    println!("archetypes:  {}", buf_context.archetypes.len());
+    println!("sizes:       {}", buf_context.sizes.len());
+    println!("senses:      {}", buf_context.senses.len());
+    println!("auras:       {}", buf_context.auras.len());
+    println!("immunities:  {}", buf_context.immunities.len());
+    println!("resistances: {}", buf_context.resistances.len());
+    println!("weaknesses:  {}", buf_context.weaknesses.len());
+    println!("attack:      {}", buf_context.special_attack.len());
+    println!("spells:      {}", buf_context.spells.len());
+    println!("talents:     {}", buf_context.talents.len());
+    println!("skills:      {}", buf_context.skills.len());
+    println!("languages:   {}", buf_context.languages.len());
+    println!("environment: {}", buf_context.environment.len());
+    println!("specials:    {}", buf_context.specials.len());
+}
+
+pub fn total_buffers_size(buf_context: &Buffer_Context) -> usize
+{
+    let mut total_size: usize = 0;
+    total_size += buf_context.string.len();
+    total_size += buf_context.number.len();
+    total_size += buf_context.name.len();
+    total_size += buf_context.gs.len();
+    total_size += buf_context.pe.len();
+    total_size += buf_context.alignment.len();
+    total_size += buf_context.types.len();
+    total_size += buf_context.subtypes.len();
+    total_size += buf_context.archetypes.len();
+    total_size += buf_context.sizes.len();
+    total_size += buf_context.senses.len();
+    total_size += buf_context.auras.len();
+    total_size += buf_context.immunities.len();
+    total_size += buf_context.resistances.len();
+    total_size += buf_context.weaknesses.len();
+    total_size += buf_context.special_attack.len();
+    total_size += buf_context.spells.len();
+    total_size += buf_context.talents.len();
+    total_size += buf_context.skills.len();
+    total_size += buf_context.languages.len();
+    total_size += buf_context.environment.len();
+    total_size += buf_context.specials.len();
+    return total_size;
 }
 
 pub fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
@@ -215,4 +295,28 @@ pub fn add_entry_if_missing_dbg(cache: &mut Vec<CachedIndex<u16>>, buf: &mut Byt
     cache.push(cached_index);
     
     return cursor as u16;
+}
+
+pub const PAREN_BIT_U32: u32 = 0x40000000;
+pub const PAREN_BIT_U16: u16 = 0x4000;
+
+pub const INTERN_BIT_U32: u32 = 0x80000000;
+pub const INTERN_BIT_U16: u16 = 0x8000;
+
+pub fn pack_value_u32(val_type: u32, val_value: i32, type_size: usize, val_mask: i32, paren_bit: u32) -> u32
+{
+    //NOTE: 0b X X .. YYYYYYYY ZZZZZZZ
+    //         ^ ^        ^       ^
+    //  Interned Paren    Value   Type
+    let result: u32 = paren_bit | ((val_value & val_mask) << type_size) as u32 | val_type;
+    return result;
+}
+
+pub fn pack_value_u16(val_type: u16, val_value: i16, type_size: usize, val_mask: i16, paren_bit: u16) -> u16
+{
+    //NOTE: 0b X X .. YYYYYYYY ZZZZZZZ
+    //         ^ ^        ^       ^
+    //  Interned Paren    Value   Type
+    let result: u16 = paren_bit | ((val_value & val_mask) << type_size) as u16 | val_type;
+    return result;
 }

@@ -112,32 +112,6 @@ macro_rules! check_unwrap
     }
 }
 
-struct Buffer_Context
-{
-    string         : ByteBuffer,
-    number         : ByteBuffer,
-    name           : ByteBuffer,
-    gs             : ByteBuffer, //TODO: Incorporate into string
-    pe             : ByteBuffer, //TODO: Incorporate into string
-    alignment      : ByteBuffer, //TODO: Incorporate into string
-    types          : ByteBuffer,
-    subtypes       : ByteBuffer,
-    archetypes     : ByteBuffer,
-    sizes          : ByteBuffer, //TODO: Incorporate into string
-    senses         : ByteBuffer,
-    auras          : ByteBuffer,
-    immunities     : ByteBuffer,
-    resistances    : ByteBuffer,
-    weaknesses     : ByteBuffer,
-    special_attack : ByteBuffer, //TODO: Remove. Not used
-    spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
-    talents        : ByteBuffer,
-    skills         : ByteBuffer,
-    languages      : ByteBuffer, //TODO: Investigate. This seems too big
-    specials       : ByteBuffer,
-    environment    : ByteBuffer, //TODO: Incorporate into string
-}
-
 #[derive(Debug)]
 struct Mob_Entry
 {
@@ -371,11 +345,15 @@ fn create_mob_entry(cache: &mut VectorCache,
     
     //println!("{:#?}", head_arr[0]);
     
+    let mut skills_idx  = [0u32; 24];
     let mut skill_count = 0;
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
     {
-        skill_count = prepare_skill_str(&mut stats_arr, &page, skill_off);
+        //skill_count = prepare_skill_str(&mut stats_arr, &page.page_addr, skill_off);
+        skills_idx = prepare_skill_str(&mut stats_arr, cache, bufs, &page.page_addr, skill_off);
+        
+        //println!("{:#?}:\n{:#?}", head_arr[0], skills_idx);
     }
     
     //for ijk in 0..skill_count { println!("\t{:#?}", stats_arr[5+skill_off+ijk]); }
@@ -518,7 +496,7 @@ fn create_mob_entry(cache: &mut VectorCache,
     
     //Stats
     let mut talents_idx = [0u16; 24];
-    let mut skills_idx  = [0u32; 24];
+    //let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
@@ -538,6 +516,7 @@ fn create_mob_entry(cache: &mut VectorCache,
     //TODO: make skills cool: 25965
     // FIX Herne  Conoscenze (geografia) +6 (+8 nelle foreste)
     //println!("{:#?}:", head_arr[0]);
+    /*
     for s in 0..skill_count
     { 
         let num_value_check: &[_] = &['+', '-'];
@@ -556,6 +535,8 @@ fn create_mob_entry(cache: &mut VectorCache,
                 let mut subskill_count = 0;
                 for subskill_idx in 0..(Skill_Names::UnoQualsiasi as u16)
                 {
+                    //TODO: This might be bad. It can make me catch "+12 a saltare" and "+12 saltare"
+                    //      But it might also fuck up: "tutte" vs "tutte le altre"
                     let subskill_name = &Skill_Names::from_u16(subskill_idx).as_str();
                     if(inside_paren.contains(subskill_name))
                     {
@@ -596,17 +577,16 @@ fn create_mob_entry(cache: &mut VectorCache,
                 
                 if(subskill_count == 0)
                 {
-                    /*TODO: When the time comes!
-                    skill_entry = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]) as u16;
-                    skill_entry |= 0x8000;
-    */
                     //println!("{:#?}:", head_arr[0]);
                     println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                    
+                    unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
                 }
                 else
                 {
                     let without_paren = stats_arr[10+s+skill_off].replace(paren_block, "");
                     
+                    let mut did_intern = false;
                     let mut name_check = "";
                     if let Some(v) = split_off(&without_paren, "+-")
                     {
@@ -620,7 +600,11 @@ fn create_mob_entry(cache: &mut VectorCache,
                             println!("{:#?}:", head_arr[0]);
                             println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
                             println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                            
+                            unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                            
                             //TODO Do the interning
+                            did_intern = true;
                         }
                         else
                         {
@@ -629,31 +613,42 @@ fn create_mob_entry(cache: &mut VectorCache,
                     }
                     else
                     {
-                        assert!(false, "Couldn't find +/- in {without_paren:#?}");
+                        //NOTE: We just assume there's no bonus because it's +0...
+                        name_check = without_paren.trim();
+                        skill_value[0] = 0;
                     }
                     
                     if(skill_value[0] != -999)
                     {
                         skill_type[0] = Skill_Names::from_str(name_check);
-                        assert!(skill_type[0] != 0xffff, "Looking for: {:#?} in {:#?}", name_check, stats_arr[10+s+skill_off]);
-                        
-                        skill_entry = skill_type[0] | ((skill_value[0] & 0x007F) << 7) as u16;
-                        skill_entry |= 0x4000;
-                        
-                        //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type[0], skill_value[0], skill_entry);
-                        
-                        for subskill_idx in 0..subskill_count
+                        if(skill_type[0] == 0xffff)
                         {
-                            //NOTE: All the skill entries
-                            //println!("\t\t{:#?} {:#?}", Skill_Names::from_u16(skill_type[subskill_idx+1]), skill_value[subskill_idx+1]);
+                            println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                            
+                            unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                        }
+                        else
+                        {
+                            skill_entry = skill_type[0] | ((skill_value[0] & 0x007F) << 7) as u16;
+                            skill_entry |= 0x4000;
+                            
+                            //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type[0], skill_value[0], skill_entry);
+                            
+                            for subskill_idx in 0..subskill_count
+                            {
+                                //NOTE: All the skill entries
+                                //println!("\t\t{:#?} {:#?}", Skill_Names::from_u16(skill_type[subskill_idx+1]), skill_value[subskill_idx+1]);
+                            }
                         }
                     }
-                    else
+                    else if(did_intern == false)
                     {
                         //TODO: Probably do the interning?
                         println!("{:#?}:", head_arr[0]);
                         println!("[ERROR] couldn't parse value: {:#?}", without_paren);
                         println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
                     }
                 }
             }
@@ -663,6 +658,7 @@ fn create_mob_entry(cache: &mut VectorCache,
                 let mut skill_value: i16 = -999;
                 let mut skill_entry: u16 = 0;
                 
+                let mut did_intern = false;
                 let mut name_check: &str = "";
                 
                 if let Some(v) = split_off(stats_arr[10+s+skill_off], "+-")
@@ -677,6 +673,10 @@ fn create_mob_entry(cache: &mut VectorCache,
                         println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
                         println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
                         //TODO Do the interning
+                        
+                        did_intern = true;
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
                     }
                     else
                     {
@@ -691,6 +691,12 @@ fn create_mob_entry(cache: &mut VectorCache,
                     {
                         //println!("{:#?}:", head_arr[0]);
                         //println!("Invalid Type {:#?}", stats_arr[10+s+skill_off]);
+                        //TODO: Here I should Intern as Well...
+                        //println!("{:#?}:", head_arr[0]);
+                        //println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
                     }
                     else
                     {
@@ -698,15 +704,21 @@ fn create_mob_entry(cache: &mut VectorCache,
                         //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type, skill_value, skill_entry);
                     }
                 }
-                else
+                else if(did_intern == false)
                 {
-                    //TODO: Probably do the interning?
+                    //TODO: Probably do the interning? Need to do did_intern boolean here as well if I do.
+                    println!("{:#?}:", head_arr[0]);
+                    println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                    println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                    
+                    unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
                 }
             }
         }
         
         skills_idx[s] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]);
     }
+    */
     //println!("");
     
     for l in 0..lang_count
@@ -1041,85 +1053,14 @@ fn create_npc_entry(cache: &mut VectorCache,
         talent_count = flatten_str_list(&mut stats_arr, 4, ", ");
     }
     
-    /*
+    let mut skills_idx  = [0u32; 24];
     let mut skill_count = 0;
     let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
     if !stats_arr[5+skill_off].is_empty()
     {
-        //TODO Separate type from value and store them in 2 different buffers
-        skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
+        //skill_count = prepare_skill_str(&mut stats_arr, &page.page_addr, skill_off);
+        skills_idx = prepare_skill_str(&mut stats_arr, cache, bufs, &page.page_addr, skill_off);
     }
-*/
-    
-    let mut skill_count = 0;
-    let skill_off = if talent_count > 0 { talent_count - 1 } else { 0 };
-    if !stats_arr[5+skill_off].is_empty()
-    {
-        let mut skill_paren_index = stats_arr[5+skill_off].find("(");
-        
-        if skill_paren_index.is_none()
-        {
-            skill_count = flatten_str_list(&mut stats_arr, 5+skill_off, ", ");
-        }
-        else
-        {
-            let mut base = stats_arr.remove(5 + skill_off);
-            
-            loop 
-            {
-                let mut skill_curr_off = 5 + skill_off + skill_count;
-                let mut effective_paren_index = 999999;
-                let mut skill_paren_c_index   = 9999999;
-                
-                let skill_paren_c_index_opt = base.find(")");
-                if skill_paren_index.is_some() { 
-                    effective_paren_index = skill_paren_index.unwrap();
-                    if skill_paren_c_index_opt.is_none() { println!("{:#?}", page.page_addr); panic!(); }
-                    skill_paren_c_index = skill_paren_c_index_opt.unwrap();
-                }
-                
-                let skill_comma_index = base.find(", ");
-                if skill_comma_index.is_none() { 
-                    //No more fields, add the last element and quit
-                    stats_arr.insert(skill_curr_off, base);
-                    skill_count += 1;
-                    break; 
-                }
-                
-                if skill_comma_index.unwrap() < effective_paren_index
-                {
-                    //NOTE: All good, we are not inside the parens
-                    let new_skill = base.get(..skill_comma_index.unwrap()).unwrap();
-                    let next      = base.get(skill_comma_index.unwrap()+2..).unwrap();
-                    stats_arr.insert(skill_curr_off, new_skill);
-                    skill_count += 1;
-                    base = next;
-                    skill_paren_index = base.find("(");
-                    continue;
-                }
-                else
-                {
-                    //TODO: If the comma is after the close paren we don't actually need to do this!
-                    let after_paren_idx = base[skill_paren_c_index..].find(", ");
-                    if after_paren_idx.is_none() {
-                        //No more fields, add the last element and quit
-                        stats_arr.insert(skill_curr_off, base);
-                        skill_count += 1;
-                        break;
-                    }
-                    
-                    let new_skill = base.get(..after_paren_idx.unwrap()+skill_paren_c_index).unwrap();
-                    let next      = base.get(after_paren_idx.unwrap()+2+skill_paren_c_index..).unwrap();
-                    stats_arr.insert(skill_curr_off, new_skill);
-                    skill_count += 1;
-                    base = next;
-                    skill_paren_index = base.find("(");
-                    continue;
-                }
-            }
-        }
-    }
-    
     
     let mut lang_count = 0;
     let lang_off = if skill_count > 0 { (skill_count - 1) + skill_off } else { skill_off };
@@ -1252,7 +1193,7 @@ fn create_npc_entry(cache: &mut VectorCache,
     
     //Stats
     let mut talents_idx = [0u16; 24];
-    let mut skills_idx  = [0u32; 24];
+    //let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
@@ -1269,8 +1210,217 @@ fn create_npc_entry(cache: &mut VectorCache,
     for t in 0..talent_count
     { talents_idx[t] = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, stats_arr[9+t]); }
     
+    /*
     for s in 0..skill_count
     { skills_idx[s]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]); }
+    */
+    
+    //TODO: make skills cool: 25965
+    // FIX Herne  Conoscenze (geografia) +6 (+8 nelle foreste)
+    //println!("{:#?}:", head_arr[0]);
+    /*
+    for s in 0..skill_count
+    { 
+        let num_value_check: &[_] = &['+', '-'];
+        let trim_check: &[_] = &[' ', ',', ';', '.'];
+        
+        if(stats_arr[10+s+skill_off] != "-")
+        {
+            if let Some((paren_block, paren_begin_idx, paren_end_idx)) = slice_between_inclusive(stats_arr[10+s+skill_off], "(", ")")
+            {
+                let mut skill_type       = [0u16; 24];
+                let mut skill_value      = [-999i16; 24]; //TODO: Use -999 by default as sentinel value
+                let mut skill_entry: u16 = 0;
+                
+                //let mut inside_paren = stats_arr[10+s+skill_off][complex_skill_idx+1..].to_lowercase();
+                let mut inside_paren = paren_block.to_lowercase();
+                let mut subskill_count = 0;
+                for subskill_idx in 0..(Skill_Names::UnoQualsiasi as u16)
+                {
+                    //TODO: This might be bad. It can make me catch "+12 a saltare" and "+12 saltare"
+                    //      But it might also fuck up: "tutte" vs "tutte le altre"
+                    let subskill_name = &Skill_Names::from_u16(subskill_idx).as_str();
+                    if(inside_paren.contains(subskill_name))
+                    {
+                        //NOTE: Found one
+                        skill_type[subskill_count+1] = subskill_idx;
+                        
+                        //NOTE: Check for extra value. Is this good enough?
+                        if let Some(subskill_val) = inside_paren.find(num_value_check)
+                        {
+                            let subskill_val_str = inside_paren[subskill_val..].split_once(' ');
+                            match(subskill_val_str)
+                            {
+                                Some(v_str) =>
+                                {
+                                    skill_value[subskill_count+1] = v_str.0
+                                        .trim_matches(trim_check)
+                                        .parse::<i16>()
+                                        .unwrap_or_else(|_| panic!("{:#?}\n[ERROR] couldn't parse value: {:#?}", head_arr[0], v_str.0));
+                                    
+                                    inside_paren = v_str.1.replace(subskill_name, "");
+                                }
+                                
+                                None =>
+                                {
+                                    panic!("Couldn't find end of value: {:#?}", inside_paren);
+                                }
+                            }
+                            
+                        }
+                        else
+                        {
+                            inside_paren = inside_paren.replace(subskill_name, "");
+                        }
+                        
+                        subskill_count += 1;
+                    }
+                }
+                
+                if(subskill_count == 0)
+                {
+                    //println!("{:#?}:", head_arr[0]);
+                    println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                    
+                    unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                }
+                else
+                {
+                    let without_paren = stats_arr[10+s+skill_off].replace(paren_block, "");
+                    
+                    let mut did_intern = false;
+                    let mut name_check = "";
+                    if let Some(v) = split_off(&without_paren, "+-")
+                    {
+                        name_check = v.0.trim();
+                        let skill_value_opt = v.1
+                            .trim_matches(trim_check)
+                            .parse::<i16>();
+                        
+                        if(skill_value_opt.is_err())
+                        {
+                            println!("{:#?}:", head_arr[0]);
+                            println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                            println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                            
+                            unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                            
+                            //TODO Do the interning
+                            did_intern = true;
+                        }
+                        else
+                        {
+                            skill_value[0] = skill_value_opt.unwrap();
+                        }
+                    }
+                    else
+                    {
+                        //NOTE: We just assume there's no bonus because it's +0...
+                        name_check = without_paren.trim();
+                        skill_value[0] = 0;
+                    }
+                    
+                    if(skill_value[0] != -999)
+                    {
+                        skill_type[0] = Skill_Names::from_str(name_check);
+                        if(skill_type[0] == 0xffff)
+                        {
+                            println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                            
+                            unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                        }
+                        else
+                        {
+                            skill_entry = skill_type[0] | ((skill_value[0] & 0x007F) << 7) as u16;
+                            skill_entry |= 0x4000;
+                            
+                            //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type[0], skill_value[0], skill_entry);
+                            
+                            for subskill_idx in 0..subskill_count
+                            {
+                                //NOTE: All the skill entries
+                                //println!("\t\t{:#?} {:#?}", Skill_Names::from_u16(skill_type[subskill_idx+1]), skill_value[subskill_idx+1]);
+                            }
+                        }
+                    }
+                    else if(did_intern == false)
+                    {
+                        //TODO: Probably do the interning?
+                        println!("{:#?}:", head_arr[0]);
+                        println!("[ERROR] couldn't parse value: {:#?}", without_paren);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                    }
+                }
+            }
+            else
+            {
+                let mut skill_type:  u16 = 0;
+                let mut skill_value: i16 = -999;
+                let mut skill_entry: u16 = 0;
+                
+                let mut did_intern = false;
+                let mut name_check: &str = "";
+                
+                if let Some(v) = split_off(stats_arr[10+s+skill_off], "+-")
+                {
+                    //TODO: In this case there's no paren block. Which means a type without a value should be
+                    //      Impossible, and if present it's an error in the source. Change this?
+                    name_check = v.0.trim();
+                    let skill_value_opt = v.1.trim_matches(trim_check).parse::<i16>();
+                    if(skill_value_opt.is_err())
+                    {
+                        println!("{:#?}:", head_arr[0]);
+                        println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        //TODO Do the interning
+                        
+                        did_intern = true;
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                    }
+                    else
+                    {
+                        skill_value = skill_value_opt.unwrap();
+                    }
+                }
+                
+                if(skill_value != -999)
+                {
+                    skill_type = Skill_Names::from_str(name_check);
+                    if(skill_type == 0xffff)
+                    {
+                        //println!("{:#?}:", head_arr[0]);
+                        //println!("Invalid Type {:#?}", stats_arr[10+s+skill_off]);
+                        //TODO: Here I should Intern as Well...
+                        //println!("{:#?}:", head_arr[0]);
+                        //println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                        println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                        
+                        unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                    }
+                    else
+                    {
+                        skill_entry = skill_type | ((skill_value & 0x007F) << 7) as u16;
+                        //println!("\t{:#?}: {:#?} {:#?} -> {:#?}", stats_arr[10+s+skill_off], skill_type, skill_value, skill_entry);
+                    }
+                }
+                else if(did_intern == false)
+                {
+                    //TODO: Probably do the interning? Need to do did_intern boolean here as well if I do.
+                    println!("{:#?}:", head_arr[0]);
+                    println!("[ERROR] couldn't parse value: {:#?}", stats_arr[10+s+skill_off]);
+                    println!("\t{:#?} Interned", stats_arr[10+s+skill_off]);
+                    
+                    unsafe { debug_skill_cache_size += 4u32 + stats_arr[10+s+skill_off].len() as u32; }
+                }
+            }
+        }
+        
+        skills_idx[s] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, stats_arr[10+s+skill_off]);
+    }
+    */
     
     for l in 0..lang_count
     { lang_idx[l]    = add_entry_if_missing(&mut cache.languages, &mut bufs.languages, stats_arr[11+l+lang_off]); }
@@ -1637,8 +1787,9 @@ fn main() -> Result<(), isahc::Error> {
     
     println!("Start Mobs");
     for file_idx in 0..array_of_paths.len()
-        //for file_idx in 1274..1277
+        //for file_idx in 1248..1249
     {
+        //println!("{file_idx} {:#?}", array_of_paths[file_idx]);
         /*
 if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" {
             println!("{:#?}", file_idx);
@@ -1655,8 +1806,6 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
         }
     }
     println!("End Mobs");
-    
-    panic!();
     
     let garpn_now = Instant::now();
     raw_page_vec = get_all_raw_pages(&array_of_npc_paths);
@@ -1678,58 +1827,17 @@ if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" 
     }
     println!("End NPCs");
     
+    //TODO: Remove this.
+    println!("Interned Skills Size: {:#?}", buf_context.skills.len());
+    
     println!("Mob Count: {}", mob_entries_vec.len());
     println!("NPC Count: {}", npc_entries_vec.len());
     
-    let mut total_size : usize = 0;
-    
-    total_size += buf_context.string.len();
-    total_size += buf_context.number.len();
-    total_size += buf_context.name.len();
-    total_size += buf_context.gs.len();
-    total_size += buf_context.pe.len();
-    total_size += buf_context.alignment.len();
-    total_size += buf_context.types.len();
-    total_size += buf_context.subtypes.len();
-    total_size += buf_context.archetypes.len();
-    total_size += buf_context.sizes.len();
-    total_size += buf_context.senses.len();
-    total_size += buf_context.auras.len();
-    total_size += buf_context.immunities.len();
-    total_size += buf_context.resistances.len();
-    total_size += buf_context.weaknesses.len();
-    total_size += buf_context.special_attack.len();
-    total_size += buf_context.spells.len();
-    total_size += buf_context.talents.len();
-    total_size += buf_context.skills.len();
-    total_size += buf_context.languages.len();
-    total_size += buf_context.environment.len();
-    total_size += buf_context.specials.len();
+    let total_size: usize = total_buffers_size(&buf_context);;
     
     println!("Total Size of Buffers: {}", total_size);
     
-    println!("Strings:     {}", buf_context.string.len());
-    println!("Number:      {}", buf_context.number.len());
-    println!("Name:        {}", buf_context.name.len());
-    println!("gs:          {}", buf_context.gs.len());
-    println!("pe:          {}", buf_context.pe.len());
-    println!("alignment:   {}", buf_context.alignment.len());
-    println!("types:       {}", buf_context.types.len());
-    println!("subtypes:    {}", buf_context.subtypes.len());
-    println!("archetypes:  {}", buf_context.archetypes.len());
-    println!("sizes:       {}", buf_context.sizes.len());
-    println!("senses:      {}", buf_context.senses.len());
-    println!("auras:       {}", buf_context.auras.len());
-    println!("immunities:  {}", buf_context.immunities.len());
-    println!("resistances: {}", buf_context.resistances.len());
-    println!("weaknesses:  {}", buf_context.weaknesses.len());
-    println!("attack:      {}", buf_context.special_attack.len());
-    println!("spells:      {}", buf_context.spells.len());
-    println!("talents:     {}", buf_context.talents.len());
-    println!("skills:      {}", buf_context.skills.len());
-    println!("languages:   {}", buf_context.languages.len());
-    println!("environment: {}", buf_context.environment.len());
-    println!("specials:    {}", buf_context.specials.len());
+    dump_buffers(&buf_context);
     
     
     let mut result_file = File::create("Compendium")?;

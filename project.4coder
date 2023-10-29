@@ -26,18 +26,18 @@ command_list =
 		.cursor_at_end = false,
 		.cmd = { {"cargo build", .os = "win"}, {"build.sh", .os = "linux"} },
 	},
-	
+
 	{
-		.name = "run_debug",
+		.name = "run_release",
 		.out = "*run*",
-		.footer_panel = false,
+		.footer_panel = true,
 		.save_dirty_files = false,
 		.cursor_at_end = true,
-		.cmd = { {"cargo run", .os = "win" } }
+		.cmd = { {"cargo run --release", .os = "win" } }
 	},
 
 
 };
 
 fkey_command[1]  = "build_debug";
-fkey_command[2]  = "run_debug";
+fkey_command[2]  = "run_release";

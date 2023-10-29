@@ -1,11 +1,13 @@
 use crate::pages::*;
 use crate::parse_util::*;
+use crate::vec_cache::*;
 
 #[derive(Debug)]
 pub enum Skill_Names
 {
     Acrobazia,
     Saltare,
+    Saltare2,
     
     Addestrare,
     Artigianato,
@@ -43,6 +45,7 @@ pub enum Skill_Names
     Conoscenze_Geografia,
     Conoscenze_Ingegneria,
     Conoscenze_Locali,
+    Conoscenze_Locali2,
     Conoscenze_Natura,
     Conoscenze_Nobilt,
     Conoscenze_Piani,
@@ -118,14 +121,27 @@ pub enum Skill_Names
     Sapienza,
     Scalare,
     Sopravvivenza,
+    
+    SeguireTracce,
+    
     Utilizzare,
     Valutare,
     Volare,
     
+    Acqua,
+    Foreste,
+    Paludi,
+    
+    Ascoltare,
+    Individuare,
+    
+    Tutte,
     Qualsiasi,
     UnaQualsiasi,
     UnoQualsiasi,
 }
+
+const SKILLS_BITS: usize = 7;
 
 impl Skill_Names {
     pub fn as_str(&self) -> &'static str
@@ -133,7 +149,8 @@ impl Skill_Names {
         match self
         {
             Skill_Names::Acrobazia => "Acrobazia",
-            Skill_Names::Saltare => "saltare", //TODO:"salta" is better. Hesitant cause I don't wanna match wrong.
+            Skill_Names::Saltare => "saltare",
+            Skill_Names::Saltare2 => "salta",
             
             Skill_Names::Addestrare => "Addestrare Animali",
             Skill_Names::Artigianato => "Artigianato",
@@ -171,6 +188,7 @@ impl Skill_Names {
             Skill_Names::Conoscenze_Geografia => "geografia",
             Skill_Names::Conoscenze_Ingegneria => "ingegneria",
             Skill_Names::Conoscenze_Locali => "locali",
+            Skill_Names::Conoscenze_Locali2 => "locale",
             Skill_Names::Conoscenze_Natura => "natura",
             Skill_Names::Conoscenze_Nobilt => "nobilt\u{00e0}",
             Skill_Names::Conoscenze_Piani => "piani",
@@ -244,10 +262,21 @@ impl Skill_Names {
             Skill_Names::Sapienza => "Sapienza Magica",
             Skill_Names::Scalare => "Scalare",
             Skill_Names::Sopravvivenza => "Sopravvivenza",
+            
+            Skill_Names::SeguireTracce => "seguire tracce",
+            
             Skill_Names::Utilizzare => "Utilizzare Congegni Magici",
             Skill_Names::Valutare => "Valutare",
             Skill_Names::Volare => "Volare",
             
+            Skill_Names::Acqua => "acqua",
+            Skill_Names::Foreste => "foreste",
+            Skill_Names::Paludi => "paludi",
+            
+            Skill_Names::Ascoltare => "Ascoltare",
+            Skill_Names::Individuare => "Individuare",
+            
+            Skill_Names::Tutte => "tutte",
             Skill_Names::Qualsiasi => "qualsiasi",
             Skill_Names::UnaQualsiasi => "una qualsiasi",
             Skill_Names::UnoQualsiasi => "uno qualsiasi",
@@ -260,6 +289,7 @@ impl Skill_Names {
         {
             "Acrobazia" => Skill_Names::Acrobazia as u16,
             "saltare" => Skill_Names::Saltare as u16,
+            "salta" => Skill_Names::Saltare2 as u16,
             
             "Addestrare Animali" => Skill_Names::Addestrare as u16,
             "Artigianato" => Skill_Names::Artigianato as u16,
@@ -297,6 +327,7 @@ impl Skill_Names {
             "geografia" => Skill_Names::Conoscenze_Geografia as u16,
             "ingegneria" => Skill_Names::Conoscenze_Ingegneria as u16,
             "locali" => Skill_Names::Conoscenze_Locali as u16,
+            "locale" => Skill_Names::Conoscenze_Locali as u16,
             "natura" => Skill_Names::Conoscenze_Natura as u16,
             "nobilt\u{00e0}" => Skill_Names::Conoscenze_Nobilt as u16,
             "piani" => Skill_Names::Conoscenze_Piani as u16,
@@ -370,15 +401,167 @@ impl Skill_Names {
             "Sapienza Magica" => Skill_Names::Sapienza as u16,
             "Scalare" => Skill_Names::Scalare as u16,
             "Sopravvivenza" => Skill_Names::Sopravvivenza as u16,
+            
+            "seguire tracce" => Skill_Names::SeguireTracce as u16,
+            
             "Utilizzare Congegni Magici" => Skill_Names::Utilizzare as u16,
             "Valutare" => Skill_Names::Valutare as u16,
             "Volare" => Skill_Names::Volare as u16,
             
+            "acqua" => Skill_Names::Acqua as u16,
+            "foreste" => Skill_Names::Foreste as u16,
+            "paludi" => Skill_Names::Paludi as u16,
+            
+            "Ascoltare" => Skill_Names::Ascoltare as u16,
+            "Individuare" => Skill_Names::Individuare as u16,
+            
+            "tutte" => Skill_Names::Tutte as u16,
             "qualsiasi" => Skill_Names::Qualsiasi as u16,
             "una qualsiasi" => Skill_Names::UnaQualsiasi as u16,
             "uno qualsiasi" => Skill_Names::UnoQualsiasi as u16,
             
             _ => 0xffff,
+        }
+    }
+    
+    pub fn is_valid(name: &str) -> bool
+    {
+        match name
+        {
+            "Acrobazia" => true,
+            "saltare" => true,
+            "salta" => true,
+            
+            "Addestrare Animali" => true,
+            "Artigianato" => true,
+            
+            "alchimia" => true,
+            "calligrafia" => true,
+            "carpenteria" => true,
+            "ceramica" => true,
+            "costruire archi" => true,
+            "costruire navi" => true,
+            "costruire trappole" => true,
+            "trappole" => true,
+            "fabbricare armature" => true,
+            "fabbricare armi" => true,
+            "ferramenta" => true,
+            "intessere ceste" => true,
+            "lavorare pellami" => true,
+            "lavori in muratura" => true,
+            "metallurgia" => true,
+            "pittura" => true,
+            "oreficeria" => true,
+            "rilegare libri" => true,
+            "riparare scarpe" => true,
+            "scultura" => true,
+            "tessitura" => true,
+            
+            "Artista della Fuga" => true,
+            "Camuffare" => true,
+            "Cavalcare" => true,
+            
+            "Conoscenze" => true,
+            "arcane" => true,
+            "arcana" => true,
+            "dungeon" => true,
+            "geografia" => true,
+            "ingegneria" => true,
+            "locali" => true,
+            "locale" => true,
+            "natura" => true,
+            "nobilt\u{00e0}" => true,
+            "piani" => true,
+            "religioni" => true,
+            "religione" => true,
+            "storia" => true,
+            
+            "Diplomazia" => true,
+            "Disattivare Congegni" => true,
+            "Furtivit\u{00e0}" => true,
+            "Guarire" => true,
+            "Intimidire" => true,
+            "Intrattenere" => true,
+            
+            "canto" => true,
+            "cantare" => true,
+            "commedia" => true,
+            "danza" => true,
+            "oratoria" => true,
+            "recitazione" => true,
+            "strumenti a corda" => true,
+            "strumenti a fiato" => true,
+            "strumenti a percussione" => true,
+            "strumenti a tastiera" => true,
+            
+            "Intuizione" => true,
+            "Linguistica" => true,
+            "Nuotare" => true,
+            "Percezione" => true,
+            "Professione" => true,
+            
+            "allevatore" => true,
+            "architetto" => true,
+            "avvocato" => true,
+            "barcaiolo" => true,
+            "bibliotecario" => true,
+            "birraio" => true,
+            "boscaiolo" => true,
+            "cacciatore" => true,
+            "carovaniere" => true,
+            "conciatore" => true,
+            "conestabile" => true,
+            "contabile" => true,
+            "contadino" => true,
+            "cortigiano" => true,
+            "cuoco" => true,
+            "erborista" => true,
+            "farmacista" => true,
+            "fornaio" => true,
+            "giardiniere" => true,
+            "giocatore d'azzardo" => true,
+            "guida" => true,
+            "ingegnere" => true,
+            "levatrice" => true,
+            "locandiere" => true,
+            "macellaio" => true,
+            "marinaio" => true,
+            "mercante" => true,
+            "minatore" => true,
+            "mugnaio" => true,
+            "pastore" => true,
+            "pescatore" => true,
+            "scrivano" => true,
+            "siniscalco" => true,
+            "soldato" => true,
+            "stalliere" => true,
+            "taglialegna" => true,
+            
+            "Raggirare" => true,
+            "Rapidit\u{00e0} di Mano" => true,
+            "Sapienza Magica" => true,
+            "Scalare" => true,
+            "Sopravvivenza" => true,
+            
+            "seguire tracce" => true,
+            
+            "Utilizzare Congegni Magici" => true,
+            "Valutare" => true,
+            "Volare" => true,
+            
+            "acqua" => true,
+            "foreste" => true,
+            "paludi" => true,
+            
+            "Ascoltare" => true,
+            "Individuare" => true,
+            
+            "tutte" => true,
+            "qualsiasi" => true,
+            "una qualsiasi" => true,
+            "uno qualsiasi" => true,
+            
+            _ => false,
         }
     }
     
@@ -388,6 +571,7 @@ impl Skill_Names {
         {
             n if v == Skill_Names::Acrobazia as u16 => Skill_Names::Acrobazia,
             n if v == Skill_Names::Saltare as u16 => Skill_Names::Saltare,
+            n if v == Skill_Names::Saltare2 as u16 => Skill_Names::Saltare2,
             
             n if v == Skill_Names::Addestrare as u16 => Skill_Names::Addestrare,
             n if v == Skill_Names::Artigianato as u16 => Skill_Names::Artigianato,
@@ -422,6 +606,7 @@ impl Skill_Names {
             n if v == Skill_Names::Conoscenze_Geografia as u16 => Skill_Names::Conoscenze_Geografia,
             n if v == Skill_Names::Conoscenze_Ingegneria as u16 => Skill_Names::Conoscenze_Ingegneria,
             n if v == Skill_Names::Conoscenze_Locali as u16 => Skill_Names::Conoscenze_Locali,
+            n if v == Skill_Names::Conoscenze_Locali2 as u16 => Skill_Names::Conoscenze_Locali2,
             n if v == Skill_Names::Conoscenze_Natura as u16 => Skill_Names::Conoscenze_Natura,
             n if v == Skill_Names::Conoscenze_Nobilt as u16 => Skill_Names::Conoscenze_Nobilt,
             n if v == Skill_Names::Conoscenze_Piani as u16 => Skill_Names::Conoscenze_Piani,
@@ -490,10 +675,21 @@ impl Skill_Names {
             n if v == Skill_Names::Sapienza as u16 => Skill_Names::Sapienza,
             n if v == Skill_Names::Scalare as u16 => Skill_Names::Scalare,
             n if v == Skill_Names::Sopravvivenza as u16 => Skill_Names::Sopravvivenza,
+            
+            n if v == Skill_Names::SeguireTracce as u16 => Skill_Names::SeguireTracce,
+            
             n if v == Skill_Names::Utilizzare as u16 => Skill_Names::Utilizzare,
             n if v == Skill_Names::Valutare as u16 => Skill_Names::Valutare,
             n if v == Skill_Names::Volare as u16 => Skill_Names::Volare,
             
+            n if v == Skill_Names::Acqua as u16 => Skill_Names::Acqua,
+            n if v == Skill_Names::Foreste as u16 => Skill_Names::Foreste,
+            n if v == Skill_Names::Paludi as u16 => Skill_Names::Paludi,
+            
+            n if v == Skill_Names::Ascoltare as u16 => Skill_Names::Ascoltare,
+            n if v == Skill_Names::Individuare as u16 => Skill_Names::Individuare,
+            
+            n if v == Skill_Names::Tutte as u16 => Skill_Names::Tutte,
             n if v == Skill_Names::Qualsiasi as u16 => Skill_Names::Qualsiasi,
             n if v == Skill_Names::UnaQualsiasi as u16 => Skill_Names::UnaQualsiasi,
             n if v == Skill_Names::UnoQualsiasi as u16 => Skill_Names::UnoQualsiasi,
@@ -502,26 +698,167 @@ impl Skill_Names {
     }
 }
 
-pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, page: &Mob_Page, skill_off: usize) -> usize
+struct Skill_Field<'a> /*'*/
+{
+    skill_block: &'a /*'*/ str,
+    value_block: &'a /*'*/ str,
+    paren_block_whole: &'a /*'*/ str,
+    paren_blocks: [&'a /*'*/ str; 16],
+    paren_count: usize,
+}
+
+//TODO: Not even using value_block. What the fuck.
+fn map_or_intern(field: &Skill_Field, cache: &mut VectorCache, bufs: &mut Buffer_Context, page_addr: &str) -> ([u32; 24], usize)
+{
+    let mut temp_arr = [0u32; 24];
+    let mut curr_idx = 1;
+    
+    let trim_check: &[_] = &["per", "a", "quando", "nelle", "in", "nell'", "sott'"];
+    
+    //NOTE: First we check if the paren block is mappable. Otherwise we intern
+    for i in 0..field.paren_count
+    {
+        if let Some((skill_value, rest)) = split_at_value(field.paren_blocks[i])
+        {
+            //NOTE: Block has value
+            let to_check = rest.trim();
+            let to_check = trim_str(to_check, trim_check).trim().to_lowercase();
+            if Skill_Names::is_valid(&to_check)
+            {
+                let skill_entry = pack_value_u32(Skill_Names::from_str(&to_check) as u32, 
+                                                 skill_value as i32, SKILLS_BITS, 0x00FF, PAREN_BIT_U32);
+                temp_arr[curr_idx] = skill_entry;
+                curr_idx += 1;
+                
+                //TODO: Remove this
+                //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[curr_idx-1]);
+            }
+            else
+            {
+                //NOTE: Block has value, but tag is invalid. Intern
+                temp_arr[0]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
+                temp_arr[0] |= INTERN_BIT_U32;
+                
+                //TODO: Remove this
+                //println!("[1] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+                
+                return (temp_arr, 1);
+            }
+        }
+        else
+        {
+            //NOTE: Block either has no value, 
+            //      or value is surrounded by text
+            let to_check = field.paren_blocks[i].trim().to_lowercase();
+            if Skill_Names::is_valid(&to_check)
+            {
+                let skill_entry = pack_value_u32(Skill_Names::from_str(&to_check) as u32, 
+                                                 0, SKILLS_BITS, 0x00FF, PAREN_BIT_U32);
+                temp_arr[curr_idx] = skill_entry;
+                curr_idx += 1;
+                
+                //TODO: Remove this
+                //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[curr_idx-1]);
+            }
+            else
+            {
+                //NOTE: Block has no value and tag is invalid. Intern.
+                temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
+                temp_arr[0] |= INTERN_BIT_U32;
+                
+                //TODO: Remove this
+                //println!("[2] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+                
+                return (temp_arr, 1);
+            }
+        }
+    }
+    
+    //NOTE: Here we've already checked for parentheses if there's any.
+    //      Now only check if the type is valid.
+    let without_paren = field.skill_block.replace(field.paren_block_whole, "");
+    if let Some((skill_value, rest)) = split_at_value(&without_paren)
+    {
+        let trimmed = rest.trim();
+        if Skill_Names::is_valid(&trimmed)
+        {
+            //NOTE: Skill has value and is valid.
+            let skill_entry = pack_value_u32(Skill_Names::from_str(&trimmed) as u32,
+                                             skill_value as i32, SKILLS_BITS, 0x00FF, 0);
+            temp_arr[0] = skill_entry;
+            
+            //TODO: Remove this
+            //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+        }
+        else
+        {
+            //NOTE: Skill has value but is not valid
+            temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
+            temp_arr[0] |= INTERN_BIT_U32;
+            
+            //TODO: Remove this
+            //println!("[3] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+            
+            return (temp_arr, 1);
+        }
+    }
+    else
+    {
+        //NOTE: Skill has no value. If valid we assume it's zero. Otherwise, we intern
+        let trimmed = without_paren.trim();
+        if Skill_Names::is_valid(&trimmed)
+        {
+            //NOTE: Skill has value and is valid.
+            let skill_entry = pack_value_u32(Skill_Names::from_str(&trimmed) as u32,
+                                             0, SKILLS_BITS, 0x00FF, 0);
+            temp_arr[0] = skill_entry;
+            
+            //TODO: Remove this
+            //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+        }
+        else
+        {
+            //NOTE: Skill has value but is not valid
+            temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
+            temp_arr[0] |= INTERN_BIT_U32;
+            
+            //TODO: Remove this
+            //println!("[4] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
+            
+            return (temp_arr, 1);
+        }
+    }
+    
+    return (temp_arr, curr_idx);
+}
+
+//TODO: Multiple parentheses handling!! I've only seen 1 case so far, but it's possible!
+pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache, 
+                         bufs: &mut Buffer_Context, page_addr: &str, skill_off: usize) -> [u32; 24]
 {
     //NOTE: Early exit when there's no skills.
-    if stats_arr[5+skill_off] == "-" { return 0; }
+    if stats_arr[5+skill_off] == "-" { return [0u32; 24]; }
+    
+    let mut result_arr = [0u32; 24];
+    let mut result_idx = 0;
     
     //TODO: Temporary. Remove
-    let mut skill_curr_off = 5 + skill_off;
+    //let mut skill_curr_off = 5 + skill_off;
     
-    let mut skill_count = 0;
-    
-    let base = stats_arr.remove(5 + skill_off);
-    
-    let trim_check: &[_] = &[',', ';', '.'];
-    base.trim_matches(trim_check);
-    
-    let mut skill_block: &str = "";
-    let mut paren_block: &str = "";
-    let mut value_block: &str = "";
+    let trim_check: &[_] = &[' ', ',', ';', '.'];
+    //TODO: Removing from the array doesn't work, because the elements are precisely placed. So we copy
+    //let base = stats_arr.remove(5 + skill_off).trim_matches(trim_check);
+    let base = stats_arr[5 + skill_off].trim_matches(trim_check);
     
     let mut skill_start_idx = 0;
+    
+    let mut skill_field = Skill_Field {
+        skill_block: "",
+        value_block: "",
+        paren_block_whole: "",
+        paren_blocks: [""; 16],
+        paren_count: 0,
+    };
     
     let mut char_iter = base.char_indices().peekable();
     while let iter_opt = char_iter.next()
@@ -533,24 +870,42 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, page: &Mob_Page, skill_off: 
                 {
                     //NOTE: We found the end of this specific skill
                     ',' => {
-                        skill_block = &base[skill_start_idx..base_idx].trim();
+                        skill_field.skill_block = &base[skill_start_idx..base_idx].trim();
                         skill_start_idx = base_idx + 1;
                         
                         //TODO: Here we would actually start the processing of the skill to produce a u16
                         //      value which is either a value or an index into the context buffer.
                         //
                         // Instead we just add to the &str array.
-                        skill_count += 1;
-                        stats_arr.insert(skill_curr_off, skill_block);
-                        skill_curr_off += 1;
+                        //skill_count += 1;
+                        //stats_arr.insert(skill_curr_off, skill_block);
+                        //skill_curr_off += 1;
                         
-                        //println!("Yeh: {skill_block:#?}");
+                        let (temp_arr, count) = map_or_intern(&skill_field, cache, bufs, page_addr);
+                        
+                        //NOTE: Now we've made sure that the entire skill_block is mappable.
+                        //      We can now copy the temp_arr into the result array at the proper index.
+                        for (dst, src) in result_arr[result_idx..].iter_mut().zip(&temp_arr[..count]) {
+                            *dst = *src;
+                            result_idx += 1;
+                        }
+                        
+                        //NOTE: Reset the skill_field for the next skill.
+                        skill_field = Skill_Field {
+                            skill_block: "",
+                            value_block: "",
+                            paren_block_whole: "",
+                            paren_blocks: [""; 16],
+                            paren_count: 0,
+                        };
                     }
                     
                     //NOTE: We found a specialization/condition for this skill
                     //      We need to skip until the end of the paren_block
+                    //NOTE: Now we traverse this block to divide it into comma separated chunks
                     '(' => {
-                        let start_idx = base_idx;
+                        let mut whole_idx = base_idx;
+                        let mut start_idx = base_idx;
                         let mut end_idx = 0;
                         let mut depth = 1;
                         
@@ -563,16 +918,45 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, page: &Mob_Page, skill_off: 
                                     depth -= 1;
                                     if depth == 0
                                     {
-                                        end_idx = paren_idx;
+                                        skill_field.paren_block_whole = &base[whole_idx..paren_idx+1];
+                                        skill_field.paren_blocks[skill_field.paren_count] = &base[start_idx+1..paren_idx];
+                                        skill_field.paren_count += 1;
                                         break;
                                     }
                                 }
+                                
+                                ',' => {
+                                    //NOTE: We only subdivide top-level paren block elements.
+                                    if depth == 1
+                                    {
+                                        skill_field.paren_blocks[skill_field.paren_count] = &base[start_idx+1..paren_idx];
+                                        start_idx = paren_idx;
+                                        skill_field.paren_count += 1;
+                                    }
+                                }
+                                
+                                ' ' => {
+                                    //NOTE: We check spaces because the separator could be an ' e '
+                                    if depth == 1
+                                    {
+                                        if let Some(e_sep) = base.get(paren_idx..paren_idx+3)
+                                        {
+                                            if e_sep == " e "
+                                            {
+                                                skill_field.paren_blocks[skill_field.paren_count] = &base[start_idx+1..paren_idx];
+                                                start_idx = paren_idx+2;
+                                                skill_field.paren_count += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                                
                                 _ => {}
                             }
                         }
                         
-                        assert!(end_idx != 0, "{:#?}\n\tCan't find end of paren block: {:#?} at {:#?}", page.page_addr, base, start_idx);
-                        paren_block = &base[start_idx..end_idx+1];
+                        assert!(skill_field.paren_count > 0, "{:#?}\n\tCan't fill paren block: {:#?} at {:#?}",
+                                page_addr, base, start_idx);
                     }
                     
                     //NOTE: We found the bonus for this skill
@@ -589,8 +973,8 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, page: &Mob_Page, skill_off: 
                             char_iter.next();
                         }
                         
-                        assert!(end_idx != 0, "{:#?}\n\tCan't find end of value block: {:#?} at {:#?}", page.page_addr, base, start_idx);
-                        value_block = &base[start_idx..end_idx+1];
+                        assert!(end_idx != 0, "{:#?}\n\tCan't find end of value block: {:#?} at {:#?}", page_addr, base, start_idx);
+                        skill_field.value_block = &base[start_idx..end_idx+1];
                     }
                     
                     //TODO: Add cases for \n handling?
@@ -602,22 +986,28 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, page: &Mob_Page, skill_off: 
             
             None =>
             {
-                skill_block = &base[skill_start_idx..].trim();
+                skill_field.skill_block = &base[skill_start_idx..].trim();
                 
                 //TODO: Here we would actually start the processing of the skill to produce a u16
                 //      value which is either a value or an index into the context buffer.
                 //
                 // Instead we just add to the &str array.
-                skill_count += 1;
-                stats_arr.insert(skill_curr_off, skill_block);
-                skill_curr_off += 1;
+                //stats_arr.insert(skill_curr_off, skill_field.skill_block);
+                //skill_curr_off += 1;
                 
-                //println!("Yeh: {skill_block:#?}");
+                let (temp_arr, count) = map_or_intern(&skill_field, cache, bufs, page_addr);
+                
+                //NOTE: Now we've made sure that the entire skill_block is mappable.
+                //      We can now copy the temp_arr into the result array at the proper index.
+                for (dst, src) in result_arr[result_idx..].iter_mut().zip(&temp_arr[..count]) {
+                    *dst = *src;
+                    result_idx += 1;
+                }
                 
                 break;
             }
         }
     }
     
-    return skill_count;
+    return result_arr;
 }
