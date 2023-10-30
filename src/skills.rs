@@ -729,18 +729,12 @@ fn map_or_intern(field: &Skill_Field, cache: &mut VectorCache, bufs: &mut Buffer
                                                  skill_value as i32, SKILLS_BITS, 0x00FF, PAREN_BIT_U32);
                 temp_arr[curr_idx] = skill_entry;
                 curr_idx += 1;
-                
-                //TODO: Remove this
-                //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[curr_idx-1]);
             }
             else
             {
                 //NOTE: Block has value, but tag is invalid. Intern
                 temp_arr[0]  = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
                 temp_arr[0] |= INTERN_BIT_U32;
-                
-                //TODO: Remove this
-                //println!("[1] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
                 
                 return (temp_arr, 1);
             }
@@ -753,21 +747,15 @@ fn map_or_intern(field: &Skill_Field, cache: &mut VectorCache, bufs: &mut Buffer
             if Skill_Names::is_valid(&to_check)
             {
                 let skill_entry = pack_value_u32(Skill_Names::from_str(&to_check) as u32, 
-                                                 0, SKILLS_BITS, 0x00FF, PAREN_BIT_U32);
+                                                 SENTINEL_VALUE_I32, SKILLS_BITS, 0x00FF, PAREN_BIT_U32);
                 temp_arr[curr_idx] = skill_entry;
                 curr_idx += 1;
-                
-                //TODO: Remove this
-                //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[curr_idx-1]);
             }
             else
             {
                 //NOTE: Block has no value and tag is invalid. Intern.
                 temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
                 temp_arr[0] |= INTERN_BIT_U32;
-                
-                //TODO: Remove this
-                //println!("[2] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
                 
                 return (temp_arr, 1);
             }
@@ -786,18 +774,12 @@ fn map_or_intern(field: &Skill_Field, cache: &mut VectorCache, bufs: &mut Buffer
             let skill_entry = pack_value_u32(Skill_Names::from_str(&trimmed) as u32,
                                              skill_value as i32, SKILLS_BITS, 0x00FF, 0);
             temp_arr[0] = skill_entry;
-            
-            //TODO: Remove this
-            //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
         }
         else
         {
             //NOTE: Skill has value but is not valid
             temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
             temp_arr[0] |= INTERN_BIT_U32;
-            
-            //TODO: Remove this
-            //println!("[3] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
             
             return (temp_arr, 1);
         }
@@ -808,22 +790,16 @@ fn map_or_intern(field: &Skill_Field, cache: &mut VectorCache, bufs: &mut Buffer
         let trimmed = without_paren.trim();
         if Skill_Names::is_valid(&trimmed)
         {
-            //NOTE: Skill has value and is valid.
+            //NOTE: Skill has no value and is valid.
             let skill_entry = pack_value_u32(Skill_Names::from_str(&trimmed) as u32,
-                                             0, SKILLS_BITS, 0x00FF, 0);
+                                             SENTINEL_VALUE_I32, SKILLS_BITS, 0x00FF, 0);
             temp_arr[0] = skill_entry;
-            
-            //TODO: Remove this
-            //println!("{:#?}: {:#?} PACKED -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
         }
         else
         {
-            //NOTE: Skill has value but is not valid
+            //NOTE: Skill has no value and is not valid
             temp_arr[0] = add_entry_if_missing_u32(&mut cache.skills, &mut bufs.skills, field.skill_block);
             temp_arr[0] |= INTERN_BIT_U32;
-            
-            //TODO: Remove this
-            //println!("[4] {:#?}: {:#?} Interned -> {:#?}", page_addr, field.skill_block, temp_arr[0]);
             
             return (temp_arr, 1);
         }
@@ -842,15 +818,9 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache,
     let mut result_arr = [0u32; 24];
     let mut result_idx = 0;
     
-    //TODO: Temporary. Remove
-    //let mut skill_curr_off = 5 + skill_off;
-    
+    //NOTE: Removing from the array doesn't work, because the elements are precisely placed. So we copy
     let trim_check: &[_] = &[' ', ',', ';', '.'];
-    //TODO: Removing from the array doesn't work, because the elements are precisely placed. So we copy
-    //let base = stats_arr.remove(5 + skill_off).trim_matches(trim_check);
     let base = stats_arr[5 + skill_off].trim_matches(trim_check);
-    
-    let mut skill_start_idx = 0;
     
     let mut skill_field = Skill_Field {
         skill_block: "",
@@ -860,6 +830,7 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache,
         paren_count: 0,
     };
     
+    let mut skill_start_idx = 0;
     let mut char_iter = base.char_indices().peekable();
     while let iter_opt = char_iter.next()
     {
@@ -872,14 +843,6 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache,
                     ',' => {
                         skill_field.skill_block = &base[skill_start_idx..base_idx].trim();
                         skill_start_idx = base_idx + 1;
-                        
-                        //TODO: Here we would actually start the processing of the skill to produce a u16
-                        //      value which is either a value or an index into the context buffer.
-                        //
-                        // Instead we just add to the &str array.
-                        //skill_count += 1;
-                        //stats_arr.insert(skill_curr_off, skill_block);
-                        //skill_curr_off += 1;
                         
                         let (temp_arr, count) = map_or_intern(&skill_field, cache, bufs, page_addr);
                         
@@ -987,13 +950,6 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache,
             None =>
             {
                 skill_field.skill_block = &base[skill_start_idx..].trim();
-                
-                //TODO: Here we would actually start the processing of the skill to produce a u16
-                //      value which is either a value or an index into the context buffer.
-                //
-                // Instead we just add to the &str array.
-                //stats_arr.insert(skill_curr_off, skill_field.skill_block);
-                //skill_curr_off += 1;
                 
                 let (temp_arr, count) = map_or_intern(&skill_field, cache, bufs, page_addr);
                 

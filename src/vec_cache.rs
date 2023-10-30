@@ -303,6 +303,9 @@ pub const PAREN_BIT_U16: u16 = 0x4000;
 pub const INTERN_BIT_U32: u32 = 0x80000000;
 pub const INTERN_BIT_U16: u16 = 0x8000;
 
+pub const SENTINEL_VALUE_I32: i32 = -127;
+pub const SENTINEL_VALUE_I16: i16 = -127;
+
 pub fn pack_value_u32(val_type: u32, val_value: i32, type_size: usize, val_mask: i32, paren_bit: u32) -> u32
 {
     //NOTE: 0b X X .. YYYYYYYY ZZZZZZZ
