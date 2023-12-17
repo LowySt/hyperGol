@@ -48,6 +48,7 @@ pub fn get_until<'a>(data_slice: &'a str, until: &str) -> (&'a str, &'a str)
     return (result.unwrap(), next.unwrap());
 }
 
+//TODO: This should be replaced by skip_tagged_block
 pub fn skip_to<'a>(data_slice: &'a str, tag: &str) -> &'a str
 {
     let len = tag.len();
@@ -59,6 +60,31 @@ pub fn skip_to<'a>(data_slice: &'a str, tag: &str) -> &'a str
     if res.is_none() { println!("[ERROR] Couldn't slice mob_page past tag {}", tag); return GLOBAL_NULL; }
     
     return res.unwrap();
+}
+
+pub fn skip_end_tag<'a>(data: &'a str) -> Option<&'a /*'*/str>
+{
+    let mut char_iter = data.char_indices();
+    while let Some((char_idx, char)) = char_iter.next()
+    {
+        match char
+        {
+            '>' => {
+                if data[char_idx..].len() > 2
+                {
+                    return Some(&data[char_idx+1..]);
+                }
+                else
+                {
+                    return None;
+                }
+            }
+            
+            _ => {}
+        }
+    }
+    
+    return None;
 }
 
 pub fn 
@@ -197,6 +223,7 @@ pub fn trim_str<'a>(base: &'a str, check: &[&str]) -> &'a str
     return result;
 }
 
+/*
 pub fn clear_all_tags(data_slice: &str) -> String {
     
     let mut result = String::from(data_slice);
@@ -208,10 +235,103 @@ pub fn clear_all_tags(data_slice: &str) -> String {
         let end = result.find(">");
         if end.is_none() { println!("[ERROR] Malformed html?"); return "".to_string(); }
         
-        if begin.unwrap() > end.unwrap() { println!("[ERROR] Bad assumption?"); return "".to_string(); }
+        if begin.unwrap() > end.unwrap() { println!("[ERROR] beg > end in clear_all_tags"); return "".to_string(); }
         
         result.replace_range(begin.unwrap()..end.unwrap()+1, "");
     }
+}
+*/
+pub fn clear_all_tags(data_slice: &str) -> String {
+    
+    let mut result = String::with_capacity(data_slice.len());
+    let mut char_iter = data_slice.char_indices();
+    while let iter_opt = char_iter.next()
+    {
+        match iter_opt
+        {
+            Some((curr_idx, char)) => {
+                match char
+                {
+                    '<' => {
+                        let tag_test = &data_slice[curr_idx..];
+                        
+                        //NOTE: We substitute the sup tag text with special utf8 characters
+                        //      So that PCMan knows they are supposed to be sup, and the rest of the system
+                        //      doesn't mistake it for normal text.
+                        if tag_test.starts_with("<sup>")
+                        {
+                            char_iter.nth(3);
+                            
+                            while let Some((sup_idx, sup_char)) = char_iter.next()
+                            {
+                                match sup_char {
+                                    
+                                    //NOTE: Bonus and Mithic, usually Talents
+                                    'B' => { result.push_str("\u{1d2e}"); }
+                                    ',' => { result.push_str("\u{2e34}"); }
+                                    ' ' => { result.push_str("\u{2009}"); }
+                                    'M' => { result.push_str("\u{1d39}"); }
+                                    
+                                    //NOTE: Dominio, usually for clerics/paladin's spells.
+                                    'D' => { result.push_str("\u{1d30}"); }
+                                    
+                                    //NOTE: Stirpe, usually for sorcerers
+                                    'S' => { result.push_str("\u{02e2}"); }
+                                    
+                                    //NOTE: Misc...
+                                    'O' => { result.push_str("\u{1d3c}"); }
+                                    'T' => { result.push_str("\u{1d40}"); }
+                                    'U' => { result.push_str("\u{1d41}"); }
+                                    'I' => { result.push_str("\u{1d35}"); }
+                                    
+                                    //NOTE: Usually appears in measurements (i.e. 30 cm^3, 2 dm^2)
+                                    '1' => { result.push_str("\u{00b1}"); }
+                                    '2' => { result.push_str("\u{00b2}"); }
+                                    '3' => { result.push_str("\u{00b3}"); }
+                                    
+                                    //NOTE: No substitution. Why is it even a sup on golarion!?!?
+                                    '*' => { result.push('*'); }
+                                    
+                                    //NOTE: The sup should end
+                                    '<' => {
+                                        let end_tag_test = &data_slice[sup_idx..];
+                                        
+                                        if !end_tag_test.starts_with("</sup>") {
+                                            
+                                            while let Some((inside_idx, non_sup)) = char_iter.next()
+                                            { if non_sup == '>' { break; } }
+                                        }
+                                        else { char_iter.nth(4); break; }
+                                    }
+                                    
+                                    _ => { todo!("Unhandled superscript character {sup_char} in clear_all_tags"); }
+                                }
+                            }
+                        }
+                        else //NOTE: We skip the entire tag
+                        {
+                            while let Some((tag_idx, tag_char)) = char_iter.next()
+                            {
+                                if tag_char == '>' { break; }
+                            }
+                        }
+                    }
+                    
+                    _ => {
+                        result.push(char);
+                    }
+                }
+            }
+            
+            None => {
+                return result.replace("&#160;", "");
+            }
+        }
+    }
+    
+    panic!("unreachable? in clear_all_tags()");
+    
+    return result.replace("&#160;", "");
 }
 
 //TODO: Because I'm removing something that is possibly in the middle of a string,
@@ -231,6 +351,7 @@ pub fn clear_tag(data_slice: &str, tag_begin: &str, tag_end: &str) -> String {
     return result_slice;
 }
 
+//TODO: Remove this and use `get_tagged_block()`
 pub fn get_slice_inside_tags<'a>(data_slice: &'a str, tag_begin: &str, tag_end: &str) -> (&'a str, &'a str) {
     
     let begin_idx = data_slice.find(tag_begin);
@@ -246,6 +367,124 @@ pub fn get_slice_inside_tags<'a>(data_slice: &'a str, tag_begin: &str, tag_end: 
     if next_data.is_none()    { return ("", ""); }
     
     return (result.unwrap(), next_data.unwrap());
+}
+
+//NOTE: The left result is the extracted block, the right result is the rest
+pub fn get_tagged_block<'a>(data: &'a str, tag_begin: &str, tag_end: &str, first_match: &str) -> Option<(&'a str, &'a str)>
+{
+    if let Some(idx) = data.find(first_match)
+    {
+        let beg_len   = tag_begin.len();
+        let match_len = tag_end.len();
+        let start_idx = idx + first_match.len();
+        let mut depth = 0;
+        
+        let content = skip_end_tag(&data[start_idx..])?;
+        let mut char_iter = content.char_indices().peekable();
+        while let Some((char_idx, char)) = char_iter.peek()
+        {
+            match char
+            {
+                '<' => {
+                    if content[*char_idx..].len() >= beg_len 
+                    {
+                        if let Some(sl) = content.get(*char_idx..*char_idx + beg_len)
+                        {
+                            if sl == tag_begin { depth += 1; char_iter.next(); continue; }
+                        }
+                    }
+                    
+                    if content[*char_idx..].len() >= match_len
+                    {
+                        if let Some(sl) = content.get(*char_idx..*char_idx + match_len)
+                        {
+                            if sl == tag_end
+                            {
+                                if depth == 0
+                                {
+                                    return Some((&content[..*char_idx], &content[*char_idx+match_len..]));
+                                }
+                                else
+                                {
+                                    depth -= 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                _ => {}
+            }
+            
+            char_iter.next();
+        }
+    }
+    else
+    {
+        return None;
+    }
+    
+    return None;
+}
+
+pub fn skip_tagged_block<'a>(data: &'a str, tag_begin: &str, tag_end: &str) -> Option<&'a /*'*/ str>
+{
+    if let Some(idx) = data.find(tag_begin)
+    {
+        let beg_len = tag_begin.len();
+        let match_len = tag_end.len();
+        let start_idx = idx + beg_len;
+        let mut end_idx = start_idx;
+        let mut depth = 0;
+        
+        let content = &data[start_idx..];
+        let mut char_iter = content.char_indices().peekable();
+        while let Some((char_idx, char)) = char_iter.peek()
+        {
+            match char
+            {
+                '<' => {
+                    if content[*char_idx..].len() >= beg_len
+                    {
+                        if let Some(sl) = content.get(*char_idx..*char_idx + beg_len)
+                        {
+                            if sl == tag_begin { depth += 1; char_iter.next(); continue; }
+                        }
+                    }
+                    
+                    if content[*char_idx..].len() >= match_len 
+                    {
+                        if let Some(sl) = content.get(*char_idx..*char_idx + match_len)
+                        {
+                            if sl == tag_end
+                            {
+                                if depth == 0
+                                {
+                                    return Some(&content[*char_idx + match_len..]);
+                                }
+                                else
+                                {
+                                    depth -= 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                _ => {}
+            }
+            
+            char_iter.next();
+        }
+    }
+    else
+    {
+        //NOTE: If the tag can't be found, it means there's no tagged block to be skipped.
+        //      Can this function even return None? Should I just remove the option?
+        return Some(data);
+    }
+    
+    return None;
 }
 
 pub fn fill_array_from_available<'a>(data_slice: &'a str, until: &[&str]) -> Vec<&'a str>

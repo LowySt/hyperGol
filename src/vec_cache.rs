@@ -32,8 +32,8 @@ pub struct Buffer_Context
 
 pub struct CachedIndex<T>
 {
-    hash: u64,
-    cursor: T,
+    pub hash: u64,
+    pub cursor: T,
 }
 
 pub struct VectorCache
@@ -60,6 +60,8 @@ pub struct VectorCache
     pub languages:   Vec::<CachedIndex::<u16>>,
     pub specials:    Vec::<CachedIndex::<u32>>,
     pub environment: Vec::<CachedIndex::<u16>>,
+    
+    pub talentsMod:  Vec::<CachedIndex::<u32>>, //NOTE: Shouldn't we replace talents with this?
 }
 
 impl VectorCache
@@ -89,9 +91,39 @@ impl VectorCache
             languages:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             specials:    Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
             environment: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
+            
+            talentsMod:  Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
         };
         return result;
     }
+}
+
+pub fn get_cursor_u32(cache: &Vec::<CachedIndex::<u32>>, data: &[u8]) -> (u64, u32)
+{
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    for idx in 0..cache.len()
+    { 
+        if cache[idx].hash == hash { return (hash, cache[idx].cursor); }
+    }
+    
+    return (hash, 0u32);
+}
+
+pub fn get_cursor_u16(cache: &Vec::<CachedIndex::<u16>>, data: &[u8]) -> (u64, u16)
+{
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    for idx in 0..cache.len()
+    { 
+        if cache[idx].hash == hash { return (hash, cache[idx].cursor); }
+    }
+    
+    return (hash, 0u16);
 }
 
 pub fn dump_buffers(buf_context: &Buffer_Context)
@@ -150,6 +182,9 @@ pub fn total_buffers_size(buf_context: &Buffer_Context) -> usize
 
 pub fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u32
 {
+    //NOTE: Index 0 means an empty entry.
+    if entry_data_str.len() == 0 { return 0u32; }
+    
     let replace_shit = entry_data_str.replace("\u{2012}", "-");
     let replace_shit = replace_shit.replace("\u{200b}", "");
     let replace_shit = replace_shit.replace("\u{2011}", "-");
@@ -170,33 +205,34 @@ pub fn add_entry_if_missing_u32(cache: &mut Vec<CachedIndex<u32>>, buf: &mut Byt
     //NOTE: Index 0 means an empty entry.
     if entry_len == 0 { return 0u32; }
     
-    let mut hasher = DefaultHasher::new();
-    entry_data.hash(&mut hasher);
-    let hash = hasher.finish();
+    let hashed = get_cursor_u32(cache, &entry_data);
     
-    for idx in 0..cache.len()
-    { 
-        if cache[idx].hash == hash { return cache[idx].cursor; }
+    match hashed
+    {
+        (hash, 0u32)  => {
+            let mut cursor: usize = 0;
+            cursor = buf.get_wpos();
+            
+            buf.write_bytes([entry_len as u16].as_byte_slice());
+            buf.write_bytes(entry_data);
+            
+            let write_cursor = buf.get_wpos();
+            let new_buff_size = (buf.len() - 4) as u32;
+            buf.set_wpos(0);
+            buf.write_bytes([new_buff_size].as_byte_slice());
+            buf.set_wpos(write_cursor);
+            
+            let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u32 };
+            cache.push(cached_index);
+            
+            return cursor as u32;
+        }
+        
+        (hash, found) => { return found; }
     }
-    
-    let mut cursor: usize = 0;
-    cursor = buf.get_wpos();
-    
-    buf.write_bytes([entry_len as u16].as_byte_slice());
-    buf.write_bytes(entry_data);
-    
-    let write_cursor = buf.get_wpos();
-    let new_buff_size = (buf.len() - 4) as u32;
-    buf.set_wpos(0);
-    buf.write_bytes([new_buff_size].as_byte_slice());
-    buf.set_wpos(write_cursor);
-    
-    let mut cached_index = CachedIndex { hash: hash, cursor: cursor as u32 };
-    cache.push(cached_index);
-    
-    return cursor as u32;
 }
 
+//TODO: Update to use get_cursor_u16()
 pub fn add_entry_if_missing(cache: &mut Vec<CachedIndex<u16>>, buf: &mut ByteBuffer, entry_data_str: &str) -> u16
 {
     let replace_shit = str::replace(entry_data_str, "\u{2012}", "-");

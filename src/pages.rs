@@ -35,6 +35,16 @@ pub struct NPC_Page {
     pub source:  String,
 }
 
+#[derive(Debug)]
+pub struct Talent_Page {
+    pub name:      String,
+    pub desc:      String,
+    pub pre:       String,
+    pub gain:      String,
+    pub norm:      String,
+    pub spec:      String,
+    pub source:    String,
+}
 
 pub fn get_mob_page(orig_mob_page: &str, page_addr: String) -> (Mob_Page, &str)
 {
@@ -313,4 +323,75 @@ pub fn get_npc_page_array(mob_body_opt: &str, page_path: &str) -> Vec<NPC_Page>
     }
     
     return pages;
+}
+
+pub fn get_talent_page<'a>(page_body: &'a str, page_path: &str) -> Talent_Page
+{
+    let mut talent_page = Talent_Page {
+        name: String::new(),
+        desc: String::new(),
+        pre: String::new(),
+        gain: String::new(),
+        norm: String::new(),
+        spec: String::new(),
+        source: String::new(),
+    };
+    
+    let mut name_from_link = "[ERROR]";
+    let mut shit_name = String::new();
+    
+    if let Some(slashIdx) = page_path.rfind('/') {
+        let link_name = &page_path[slashIdx+1..];
+        shit_name = link_name.replace("_", " "); //NOTE: Bullshit.
+        name_from_link = &shit_name;
+        
+        println!("{name_from_link}");
+    }
+    
+    if let Some(content) = get_tagged_block(page_body, "<div", "</div>", "<div class=\"mw-parser-output\">")
+        .and_then(|(block, _)| skip_tagged_block(block, "<table", "</table>"))
+    {
+        //NOTE:
+        //      Nome
+        //     ----------------
+        //      desc
+        //      Prerequisiti: 
+        //      Beneficio:
+        //      Normale:
+        //      Speciale:
+        //     ----------------
+        //      Fonte:
+        
+        let trimmed = content.trim();
+        
+        //TODO: Currently 45 talents are not being registered. I'm assuming all of them are not working because
+        //      they contain a table (which apparently fucks up the skip_tagged_block() above).
+        let (name, rest) = get_tagged_block(trimmed, "<span", "</span>", "<span class=\"mw-headline\"")
+            .unwrap_or((name_from_link, ""));
+        
+        //TODO: I hate this.
+        talent_page.name = clear_all_tags(name.trim()).trim().to_string();
+        
+        let mut block = rest;
+        
+        let cleared_block = clear_all_tags(block.trim()).replace("Tabella dei Talenti Generali di Golarion", "");
+        let cleared_block = cleared_block.trim();
+        let sections_check = ["Prerequisiti:", "Beneficio:", "Normale:", "Speciale:", "Fonte:"];
+        let sections = fill_array_from_available(&cleared_block, &sections_check);
+        
+        //TODO: Remove all to_string. I'm gonna convert to a fucking number anyway so...
+        talent_page.desc   = sections[0].trim().to_string();
+        talent_page.pre    = sections[1].trim().to_string();
+        talent_page.gain   = sections[2].trim().to_string();
+        talent_page.norm   = sections[3].trim().to_string();
+        talent_page.spec   = sections[4].trim().to_string();
+        talent_page.source = sections[5].trim().to_string();
+    }
+    else
+    {
+        panic!("Couldn't find content div in talent page.");
+    }
+    
+    
+    return talent_page;
 }

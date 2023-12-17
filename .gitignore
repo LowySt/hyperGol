@@ -1,7 +1,9 @@
 /target
 Compendium
+TalentsModule
 assetFile
 release.exe
 SaveFile*
 *.rdbg
 *.bat
+*.txt
