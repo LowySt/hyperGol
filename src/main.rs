@@ -431,36 +431,35 @@ fn main() -> Result<(), isahc::Error> {
         for file_idx in 0..array_of_npc_paths.len()
             //for file_idx in 0..10
         {
-            println!("{file_idx} {:#?}", array_of_npc_paths[file_idx]);
+            //println!("{file_idx} {:#?}", array_of_npc_paths[file_idx]);
             
             let mut pages = get_npc_page_array(&raw_page_vec[file_idx], &array_of_npc_paths[file_idx]);
             
             for mut page in pages
             {
                 let nce_now = Instant::now();
-                let entry = create_npc_entry(&mut vec_cache, &mut buf_context, page, file_idx);
+                let entry = create_npc_entry(&mut vec_cache, &mut buf_context, &mut talentsModule, page, file_idx);
                 npc_entries_vec.push(entry);
                 total_npc_create_entry_time += nce_now.elapsed().as_millis();
             }
         }
         println!("End NPCs");
         
-        panic!("testing shit");
-        
-        //TODO: Remove this.
-        println!("Interned Skills Size: {:#?}", buf_context.skills.len());
-        
         println!("Mob Count: {}", mob_entries_vec.len());
         println!("NPC Count: {}", npc_entries_vec.len());
         
         let total_size: usize = total_buffers_size(&buf_context);;
         
-        println!("Total Size of Buffers: {}", total_size);
+        println!("Compendium Buffers Size:   {}", total_size);
+        println!("TalentsModule Buffer Size: {}", talentsModule.len());
+        println!("Total Size of Buffers:     {}", total_size + talentsModule.len());
         
         dump_buffers(&buf_context);
         
-        
         let mut result_file = File::create("Compendium")?;
+        
+        //NOTE: Write the talents module to the file (buffer + entries)
+        result_file.write_all(&talentsModule.to_bytes());
         
         //NOTE: Write all string buffers
         result_file.write_all(&buf_context.string.to_bytes());

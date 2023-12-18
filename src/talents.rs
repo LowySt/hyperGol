@@ -4,26 +4,16 @@ use crate::entries::*;
 use crate::vec_cache::*;
 
 /*NOTE: The talents are mapped in a 32 bit value as follows
-*       [0|1] [0|1] [0|1] [5 UNUSED] [12 bit interned talent string] [12 bit index in talent module]
+*       [0|1] [0|1] [0|1] [1 UNUSED] [16 bit interned talent string] [12 bit index in talent module]
 *         ^     ^     ^                   ^                                  ^
  *         |     |     | Mithic            |                                  |
 *         |    Bonus                      |                                  |
 *         |                               |                                  |
-   *        The high bit (bit index 31)     The 12 bits in indices 23..12      The low 12 bits in indices 11..0
+   *        The high bit (bit index 31)     The 16 bits in indices 27..12      The low 12 bits in indices 11..0
  *         is used to indicate wether     indicate the interned display      indicate the index in the talent module
-*         the display name has been      name idx in the strings buffer     to retrieve all informations about the
- *         interned or not.                if present.                       talent (The entire talent page).
+*         the display name has been      name idx in the talents buffer     to retrieve all informations about the
+ *         interned or not.               if present.                        talent (The entire talent page).
 *         (0 NO, 1 YES)
-*
-*        The unused bits in indices 30..24 might be used in the future to expand the mapping
-*        A possible use case would be (when many other elements of the game are mapped 
-*        (like weapons, armors, spells...)) to allow for a more precise mapping that would remove the need
-*        for interning special names. For Example:
-*
-*        Abilità Focalizzata (Utilizzare Congegni Magici)
-*
-*        Would be mapped to a specific index prepared spcifically for it, rather then requiring 2 indices,
-*        one for the display name and one for the talent module page.
 */
 
 const TALENT_INTERN_BIT_U32:  u32 = 0x80000000;
@@ -126,10 +116,10 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     }
     else { index_in_module = find_in_talents(&mut cache.talentsMod, talentsModule, effective_name, page_addr); }
     
-    let mut name_intern_index = 0u32;
+    let mut name_intern_index = 0u16;
     let mut intern_bit        = 0u32;
     if name != "" {
-        name_intern_index = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, block);
+        name_intern_index = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, block);
         intern_bit        = TALENT_INTERN_BIT_U32;
     }
     
@@ -142,8 +132,8 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let result_idx: u32 = intern_bit 
         | bonus_bit 
         | mithic_bit 
-        | (index_in_module as u32) << TALENT_INTERN_IDX_MASK 
-        | name_intern_index;
+        | (name_intern_index as u32) << TALENT_INTERN_IDX_MASK
+        | index_in_module;
     
     return result_idx;
 }
@@ -210,30 +200,7 @@ pub fn prepare_talents_str(stats: &mut Vec<&str>, cache: &mut VectorCache, bufs:
                         }
                     }
                     
-                    _ => {
-                        /*
-                        //NOTETODO: I hate this, but superscripts are currently not handled.
-                        if char == 'B' {
-                            
-                            let check_5: String = char_iter.as_str().chars().take(5).collect();
-                            
-                            //NOTE: In the else branch we do *NOT* skip the last comma, 
-                            //      because it needs to be handled by the above match
-                            if check_5 == " , M " { char_iter.nth(4); }
-                            else if check_5 == " , M," { char_iter.nth(3); }
-                            else
-                            {
-                                let check_4: String = char_iter.as_str().chars().take(4).collect();
-                                if check_4 == ", M " { char_iter.nth(3); }
-                                else
-                                {
-                                    let check_3: String = char_iter.as_str().chars().take(3).collect();
-                                    if check_3 == ",M " { char_iter.nth(2); }
-                                }
-                            }
-                        }
-                        */
-                    }
+                    _ => { }
                 }
             }
             
