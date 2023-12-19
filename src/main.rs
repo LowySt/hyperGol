@@ -487,6 +487,8 @@ fn main() -> Result<(), isahc::Error> {
         
         let size_before_entries = result_file.stream_position().unwrap();
         
+        let byte_padding = [0u8, 0u8];
+        
         //NOTE: Write Mob Entries
         let mob_vec_len = mob_entries_vec.len() as u32;
         result_file.write_all([mob_vec_len].as_byte_slice());
@@ -558,9 +560,13 @@ fn main() -> Result<(), isahc::Error> {
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.env].as_byte_slice());
+            
+            //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
+            //          SOME byte aligned (maybe 4, maybe 8?), and the next closest byte alignment is 600 bytes
+            //         (4 more than the current structure)
+            result_file.write_all(&byte_padding);
+            result_file.write_all(&byte_padding);
         }
-        
-        let byte_padding = [0u8, 0u8];
         
         //NOTE: Write NPC Entries
         let npc_vec_len = npc_entries_vec.len() as u32;
@@ -637,7 +643,7 @@ fn main() -> Result<(), isahc::Error> {
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
-            //          4 byte aligned, and the next closest byte alignment is 508 bytes
+            //          4 byte aligned, and the next closest byte alignment is 612 bytes
             //         (2 more than the current structure)
             result_file.write_all(&byte_padding);
         }

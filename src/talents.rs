@@ -16,10 +16,12 @@ use crate::vec_cache::*;
 *         (0 NO, 1 YES)
 */
 
-const TALENT_INTERN_BIT_U32:  u32 = 0x80000000;
-const TALENT_BONUS_BIT_U32:   u32 = 0x40000000;
-const TALENT_MITHIC_BIT_U32:  u32 = 0x20000000;
-const TALENT_INTERN_IDX_MASK: u32 = 12;
+const TALENT_INTERN_BIT_U32:   u32 = 0x80000000;
+const TALENT_BONUS_BIT_U32:    u32 = 0x40000000;
+const TALENT_MITHIC_BIT_U32:   u32 = 0x20000000;
+const TALENT_INTERN_IDX_SHIFT: u32 = 12;
+const TALENT_INTERN_MASK:      u32 = 0x0FFFF000;
+const TALENT_MODULE_IDX_MASK:  u32 = 0x00000FFF;
 
 fn find_in_talents(cache: &mut Vec::<CachedIndex::<u32>>, buf: &mut ByteBuffer, needle: &str, page_addr: &str) -> u32
 {
@@ -132,7 +134,7 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let result_idx: u32 = intern_bit 
         | bonus_bit 
         | mithic_bit 
-        | (name_intern_index as u32) << TALENT_INTERN_IDX_MASK
+        | (name_intern_index as u32) << TALENT_INTERN_IDX_SHIFT
         | index_in_module;
     
     return result_idx;
