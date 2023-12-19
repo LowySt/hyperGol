@@ -511,6 +511,7 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.spells].as_byte_slice());
             
             for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
+            for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.racial_mods].as_byte_slice());
             result_file.write_all([entry.spec_qual].as_byte_slice());
@@ -556,16 +557,9 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.cmb].as_byte_slice());
             result_file.write_all([entry.cmd].as_byte_slice());
             
-            for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.env].as_byte_slice());
-            
-            //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
-            //          SOME byte aligned (maybe 4, maybe 8?), and the next closest byte alignment is 600 bytes
-            //         (4 more than the current structure)
-            result_file.write_all(&byte_padding);
-            result_file.write_all(&byte_padding);
         }
         
         //NOTE: Write NPC Entries
@@ -592,6 +586,7 @@ fn main() -> Result<(), isahc::Error> {
             for mut el in entry.tactics { result_file.write_all([el].as_byte_slice()); }
             
             for mut el in entry.skills  { result_file.write_all([el].as_byte_slice()); }
+            for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.racial_mods].as_byte_slice());
             result_file.write_all([entry.spec_qual].as_byte_slice());
@@ -639,7 +634,6 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.cmb].as_byte_slice());
             result_file.write_all([entry.cmd].as_byte_slice());
             
-            for mut el in entry.talents { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be

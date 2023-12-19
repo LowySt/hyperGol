@@ -72,10 +72,10 @@ fn find_in_talents(cache: &mut Vec::<CachedIndex::<u32>>, buf: &mut ByteBuffer, 
                 let name_str = name_str.trim_end_matches("(Metamagia)").trim();
                 
                 if name_str == needle {
-                    let mut cached_index = CachedIndex { hash: hash, cursor: talent_cursor as u32 };
+                    let mut cached_index = CachedIndex { hash: hash, cursor: loop_count as u32 };
                     cache.push(cached_index);
                     
-                    return talent_cursor as u32;
+                    return loop_count as u32;
                 }
                 
                 talent_cursor += TALENT_ENTRY_SIZE_IN_BYTES;
@@ -120,6 +120,9 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     
     let mut name_intern_index = 0u16;
     let mut intern_bit        = 0u32;
+    
+    //NOTE: If name and block are equal, it means there's no extra '(XXX)' part.
+    //      So we don't need to intern, we just use the talents themselves.
     if name != "" {
         name_intern_index = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, block);
         intern_bit        = TALENT_INTERN_BIT_U32;
@@ -131,12 +134,22 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let mut mithic_bit = 0u32;
     if is_mithic { mithic_bit = TALENT_MITHIC_BIT_U32; }
     
+    let mut result_idx: u32 = intern_bit;
+    result_idx |= bonus_bit;
+    result_idx |= mithic_bit;
+    
+    let shifted_name_intern_idx: u32 = (name_intern_index as u32) << TALENT_INTERN_IDX_SHIFT;
+    result_idx |= shifted_name_intern_idx;
+    
+    result_idx |= index_in_module;
+    
+    /*
     let result_idx: u32 = intern_bit 
         | bonus_bit 
         | mithic_bit 
         | (name_intern_index as u32) << TALENT_INTERN_IDX_SHIFT
         | index_in_module;
-    
+    */
     return result_idx;
 }
 

@@ -223,24 +223,6 @@ pub fn trim_str<'a>(base: &'a str, check: &[&str]) -> &'a str
     return result;
 }
 
-/*
-pub fn clear_all_tags(data_slice: &str) -> String {
-    
-    let mut result = String::from(data_slice);
-    loop
-    {
-        let begin = result.find("<");
-        if begin.is_none() { return result.replace("&#160;", " "); }
-        
-        let end = result.find(">");
-        if end.is_none() { println!("[ERROR] Malformed html?"); return "".to_string(); }
-        
-        if begin.unwrap() > end.unwrap() { println!("[ERROR] beg > end in clear_all_tags"); return "".to_string(); }
-        
-        result.replace_range(begin.unwrap()..end.unwrap()+1, "");
-    }
-}
-*/
 pub fn clear_all_tags(data_slice: &str) -> String {
     
     let mut result = String::with_capacity(data_slice.len());

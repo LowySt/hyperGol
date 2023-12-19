@@ -50,42 +50,42 @@ pub struct Mob_Entry
     pub magics     : u32,            // 52
     pub spells     : u32,            // 56
     pub skills     : [u32; 24],      // 152
-    pub racial_mods: u32,            // 156
-    pub spec_qual  : u32,            // 160
-    pub specials   : [u32; 24],      // 256
-    pub org        : u32,            // 260
-    pub treasure   : u32,            // 264
-    pub desc       : u32,            // 268
-    pub source     : u32,            // 272
+    pub talents    : [u32; 24],      // 248
+    pub racial_mods: u32,            // 252
+    pub spec_qual  : u32,            // 256
+    pub specials   : [u32; 24],      // 352
+    pub org        : u32,            // 356
+    pub treasure   : u32,            // 360
+    pub desc       : u32,            // 364
+    pub source     : u32,            // 368
     
-    pub name       : u16,            // 274
-    pub gs         : u16,            // 276
-    pub pe         : u16,            // 278
-    pub align      : u16,            // 280
-    pub typ        : u16,            // 282
-    pub sub        : [u16; 8],       // 298
-    pub arch       : [u16; 4],       // 306
-    pub size       : u16,            // 308
-    pub init       : u16,            // 310
-    pub senses     : [u16; 8],       // 326
-    pub perception : u16,            // 328
-    pub aura       : u16,            // 330
-    pub immunities : [u16; 16],      // 362
-    pub resistances: [u16; 16],      // 394
-    pub weaknesses : [u16; 16],      // 426
-    pub speed      : u16,            // 428
-    pub space      : u16,            // 430
-    pub reach      : u16,            // 432
-    pub str        : u16,            // 434
-    pub dex        : u16,            // 436
-    pub con        : u16,            // 438
-    pub int        : u16,            // 440
-    pub wis        : u16,            // 442
-    pub cha        : u16,            // 444
-    pub bab        : u16,            // 446
-    pub cmb        : u16,            // 448
-    pub cmd        : u16,            // 450
-    pub talents    : [u32; 24],      // 546
+    pub name       : u16,            // 370
+    pub gs         : u16,            // 372
+    pub pe         : u16,            // 374
+    pub align      : u16,            // 376
+    pub typ        : u16,            // 378
+    pub sub        : [u16; 8],       // 394
+    pub arch       : [u16; 4],       // 402
+    pub size       : u16,            // 404
+    pub init       : u16,            // 406
+    pub senses     : [u16; 8],       // 422
+    pub perception : u16,            // 424
+    pub aura       : u16,            // 426
+    pub immunities : [u16; 16],      // 458
+    pub resistances: [u16; 16],      // 490
+    pub weaknesses : [u16; 16],      // 522
+    pub speed      : u16,            // 524
+    pub space      : u16,            // 526
+    pub reach      : u16,            // 528
+    pub str        : u16,            // 530
+    pub dex        : u16,            // 532
+    pub con        : u16,            // 534
+    pub int        : u16,            // 536
+    pub wis        : u16,            // 538
+    pub cha        : u16,            // 540
+    pub bab        : u16,            // 542
+    pub cmb        : u16,            // 544
+    pub cmd        : u16,            // 546
     pub lang       : [u16; 24],      // 594
     pub env        : u16,            // 596
 }
@@ -534,43 +534,43 @@ pub struct NPC_Entry
     pub spells     : u32,            // 56
     pub tactics    : [u32; 3],       // 68
     pub skills     : [u32; 24],      // 164
-    pub racial_mods: u32,            // 168
-    pub spec_qual  : u32,            // 172
-    pub given_equip: u32,            // 176
-    pub properties : u32,            // 180
-    pub boons      : u32,            // 184
-    pub specials   : [u32; 24],      // 280
-    pub desc       : u32,            // 284
-    pub source     : u32,            // 288
+    pub talents    : [u32; 24],      // 260
+    pub racial_mods: u32,            // 
+    pub spec_qual  : u32,            // 
+    pub given_equip: u32,            // 
+    pub properties : u32,            // 
+    pub boons      : u32,            // 
+    pub specials   : [u32; 24],      // 
+    pub desc       : u32,            // 
+    pub source     : u32,            // 
     
-    pub name       : u16,            // 290
-    pub gs         : u16,            // 292
-    pub pe         : u16,            // 294
-    pub align      : u16,            // 296
-    pub typ        : u16,            // 298
-    pub sub        : [u16; 8],       // 314
-    pub arch       : [u16; 4],       // 322
-    pub size       : u16,            // 324
-    pub init       : u16,            // 326
-    pub senses     : [u16; 8],       // 342
-    pub perception : u16,            // 344
-    pub aura       : u16,            // 346
-    pub immunities : [u16; 16],      // 378
-    pub resistances: [u16; 16],      // 410
-    pub weaknesses : [u16; 16],      // 442
-    pub speed      : u16,            // 444
-    pub space      : u16,            // 446
-    pub reach      : u16,            // 448
-    pub str        : u16,            // 450
-    pub dex        : u16,            // 452
-    pub con        : u16,            // 454
-    pub int        : u16,            // 456
-    pub wis        : u16,            // 458
-    pub cha        : u16,            // 460
-    pub bab        : u16,            // 462
-    pub cmb        : u16,            // 464
-    pub cmd        : u16,            // 466
-    pub talents    : [u32; 24],      // 562
+    pub name       : u16,            // 
+    pub gs         : u16,            // 
+    pub pe         : u16,            // 
+    pub align      : u16,            // 
+    pub typ        : u16,            // 
+    pub sub        : [u16; 8],       // 
+    pub arch       : [u16; 4],       // 
+    pub size       : u16,            // 
+    pub init       : u16,            // 
+    pub senses     : [u16; 8],       // 
+    pub perception : u16,            // 
+    pub aura       : u16,            // 
+    pub immunities : [u16; 16],      // 
+    pub resistances: [u16; 16],      // 
+    pub weaknesses : [u16; 16],      // 
+    pub speed      : u16,            // 
+    pub space      : u16,            // 
+    pub reach      : u16,            // 
+    pub str        : u16,            // 
+    pub dex        : u16,            // 
+    pub con        : u16,            // 
+    pub int        : u16,            // 
+    pub wis        : u16,            // 
+    pub cha        : u16,            // 
+    pub bab        : u16,            // 
+    pub cmb        : u16,            // 
+    pub cmd        : u16,            // 
     pub lang       : [u16; 24],      // 610
 }
 
