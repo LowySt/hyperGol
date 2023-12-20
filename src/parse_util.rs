@@ -251,7 +251,7 @@ pub fn clear_all_tags(data_slice: &str) -> String {
                                     //NOTE: Bonus and Mithic, usually Talents
                                     'B' => { result.push_str("\u{1d2e}"); }
                                     ',' => { result.push_str("\u{2e34}"); }
-                                    ' ' => { result.push_str("\u{2009}"); }
+                                    ' ' => { result.push(' '); }
                                     'M' => { result.push_str("\u{1d39}"); }
                                     
                                     //NOTE: Dominio, usually for clerics/paladin's spells.
@@ -261,15 +261,15 @@ pub fn clear_all_tags(data_slice: &str) -> String {
                                     'S' => { result.push_str("\u{02e2}"); }
                                     
                                     //NOTE: Misc...
-                                    'O' => { result.push_str("\u{1d3c}"); }
-                                    'T' => { result.push_str("\u{1d40}"); }
-                                    'U' => { result.push_str("\u{1d41}"); }
-                                    'I' => { result.push_str("\u{1d35}"); }
+                                    'O' => { result.push('O'); }
+                                    'T' => { result.push('T'); }
+                                    'U' => { result.push('U'); }
+                                    'I' => { result.push('I'); }
                                     
                                     //NOTE: Usually appears in measurements (i.e. 30 cm^3, 2 dm^2)
-                                    '1' => { result.push_str("\u{00b1}"); }
-                                    '2' => { result.push_str("\u{00b2}"); }
-                                    '3' => { result.push_str("\u{00b3}"); }
+                                    '1' => { result.push('1'); }
+                                    '2' => { result.push('2'); }
+                                    '3' => { result.push('3'); }
                                     
                                     //NOTE: No substitution. Why is it even a sup on golarion!?!?
                                     '*' => { result.push('*'); }

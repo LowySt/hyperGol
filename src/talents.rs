@@ -105,10 +105,9 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let mut is_mithic = effective_name.contains('\u{1d39}');
     let mut is_bonus  = effective_name.contains('\u{1d2e}');
     
-    effective_name = effective_name.trim_end_matches(&['\u{1d39}']).trim();
-    effective_name = effective_name.trim_end_matches(&['\u{2009}']).trim();
-    effective_name = effective_name.trim_end_matches(&['\u{2e34}']).trim();
-    effective_name = effective_name.trim_end_matches(&['\u{1d2e}']).trim();
+    effective_name = effective_name.trim_end_matches(&['\u{1d39}']).trim(); //Superscript M
+    effective_name = effective_name.trim_end_matches(&['\u{2e34}']).trim(); //Superscript ,
+    effective_name = effective_name.trim_end_matches(&['\u{1d2e}']).trim(); //Superscript B
     
     let mut index_in_module: u32 = 0u32;
     if is_mithic {
@@ -121,10 +120,13 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let mut name_intern_index = 0u16;
     let mut intern_bit        = 0u32;
     
-    //NOTE: If name and block are equal, it means there's no extra '(XXX)' part.
-    //      So we don't need to intern, we just use the talents themselves.
+    //NOTE: If name is missing, it means there's an extra '(XXX)' part. So we need to intern.
     if name != "" {
-        name_intern_index = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, block);
+        //NOTE: We are doing this to completely remove annoying unicode from the compendium file.
+        //      This data will be restored using the flags: is_mithic and is_bonus.
+        let mut trimmed_block = block.replace(&['\u{1d39}', '\u{2e34}', '\u{1d2e}'], "");
+        
+        name_intern_index = add_entry_if_missing(&mut cache.talents, &mut bufs.talents, &trimmed_block);
         intern_bit        = TALENT_INTERN_BIT_U32;
     }
     
