@@ -23,6 +23,8 @@ const TALENT_INTERN_IDX_SHIFT: u32 = 12;
 const TALENT_INTERN_MASK:      u32 = 0x0FFFF000;
 const TALENT_MODULE_IDX_MASK:  u32 = 0x00000FFF;
 
+const TALENT_NOT_FOUND:        u32 = 0x00000FFF;
+
 fn find_in_talents(cache: &mut Vec::<CachedIndex::<u32>>, buf: &mut ByteBuffer, needle: &str, page_addr: &str) -> u32
 {
     let hashed = get_cursor_u32(cache, needle.as_bytes());
@@ -81,7 +83,7 @@ fn find_in_talents(cache: &mut Vec::<CachedIndex::<u32>>, buf: &mut ByteBuffer, 
                 talent_cursor += TALENT_ENTRY_SIZE_IN_BYTES;
                 if talent_cursor >= buf_len {
                     println!("Talent {needle} for {page_addr} wasn't found in the module");
-                    return 0u32;
+                    return TALENT_NOT_FOUND;
                 }
                 
                 buf.set_rpos(talent_cursor);

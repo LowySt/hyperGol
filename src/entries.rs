@@ -160,6 +160,7 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let subtypes_off = if subtypes_count > 0 { subtypes_count - 1 } else { 0 };
     let arch_off     = if arch_count > 0  { (arch_count - 1) + subtypes_off } else { subtypes_off };
     
+    //TODO: Meladaemon Perception and Aura get fucked?
     //NOTE We differentiate all senses, and from perception we only keep the value
     let misc_check    = ["Sensi:", "Aura:"];
     let mut misc_arr  = fill_array_from_available(&page.misc, &misc_check);
