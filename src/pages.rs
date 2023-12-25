@@ -376,6 +376,10 @@ pub fn get_talent_page<'a>(page_body: &'a str, page_path: &str) -> Talent_Page
         
         let cleared_block = clear_all_tags(block.trim()).replace("Tabella dei Talenti Generali di Golarion", "");
         let cleared_block = cleared_block.trim();
+        let cleared_block = clear_all_tags(block.trim()).replace("Tabella dei Talenti Generali", "");
+        let cleared_block = cleared_block.trim();
+        let cleared_block = clear_all_tags(block.trim()).replace("Tabella dei Talenti di Combattimento", "");
+        let cleared_block = cleared_block.trim();
         let sections_check = ["Prerequisiti:", "Beneficio:", "Normale:", "Speciale:", "Fonte:"];
         let sections = fill_array_from_available(&cleared_block, &sections_check);
         

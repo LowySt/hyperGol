@@ -111,7 +111,7 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     effective_name = effective_name.trim_end_matches(&['\u{2e34}']).trim(); //Superscript ,
     effective_name = effective_name.trim_end_matches(&['\u{1d2e}']).trim(); //Superscript B
     
-    let mut index_in_module: u32 = 0u32;
+    let mut index_in_module: u32 = TALENT_NOT_FOUND;
     if is_mithic {
         let mut mithic_name = effective_name.to_string();
         mithic_name.push_str(" (Mitico)");
@@ -123,7 +123,7 @@ fn map_talent_intern_name(block: &str, name: &str, cache: &mut VectorCache,
     let mut intern_bit        = 0u32;
     
     //NOTE: If name is missing, it means there's an extra '(XXX)' part. So we need to intern.
-    if name != "" {
+    if index_in_module == TALENT_NOT_FOUND || name != "" {
         //NOTE: We are doing this to completely remove annoying unicode from the compendium file.
         //      This data will be restored using the flags: is_mithic and is_bonus.
         let mut trimmed_block = block.replace(&['\u{1d39}', '\u{2e34}', '\u{1d2e}'], "");
