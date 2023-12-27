@@ -61,7 +61,7 @@ pub struct Mob_Entry
     
     pub name       : u16,            // 370
     pub gs         : u16,            // 372
-    pub pe         : u16,            // 374
+    pub pe         : u16,            // 374 //TODO: Remove this. It's obtainable from GS
     pub align      : u16,            // 376
     pub typ        : u16,            // 378
     pub sub        : [u16; 8],       // 394
@@ -100,6 +100,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let cme_now = Instant::now();
     //-----------------------------
     
+    //TODO: GS Should just be stored as a number
+    //      PE Should be completely removed and obtained directly from GS
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
     

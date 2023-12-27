@@ -9,8 +9,8 @@ pub struct Buffer_Context
     pub string         : ByteBuffer,
     pub number         : ByteBuffer,
     pub name           : ByteBuffer,
-    pub gs             : ByteBuffer, //TODO: Incorporate into string
-    pub pe             : ByteBuffer, //TODO: Incorporate into string
+    pub gs             : ByteBuffer, //TODO: Remove this. GS is just a simple number from 0 to 34.
+    pub pe             : ByteBuffer, //TODO: Remove this. It's obtainable from GS
     pub alignment      : ByteBuffer, //TODO: Incorporate into string
     pub types          : ByteBuffer,
     pub subtypes       : ByteBuffer,
