@@ -82,7 +82,7 @@ fn find_in_talents(cache: &mut Vec::<CachedIndex::<u32>>, buf: &mut ByteBuffer, 
                 
                 talent_cursor += TALENT_ENTRY_SIZE_IN_BYTES;
                 if talent_cursor >= buf_len {
-                    println!("Talent {needle} for {page_addr} wasn't found in the module");
+                    //println!("Talent {needle} for {page_addr} wasn't found in the module");
                     return TALENT_NOT_FOUND;
                 }
                 

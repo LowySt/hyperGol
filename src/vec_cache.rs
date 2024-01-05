@@ -11,11 +11,10 @@ pub struct Buffer_Context
     pub name           : ByteBuffer,
     pub gs             : ByteBuffer, //TODO: Remove this. GS is just a simple number from 0 to 34.
     pub pe             : ByteBuffer, //TODO: Remove this. It's obtainable from GS
-    pub alignment      : ByteBuffer, //TODO: Incorporate into string
     pub types          : ByteBuffer,
     pub subtypes       : ByteBuffer,
     pub archetypes     : ByteBuffer,
-    pub sizes          : ByteBuffer, //TODO: Incorporate into string
+    pub sizes          : ByteBuffer, //TODO: Incorporate into string. Or map it to an int?
     pub senses         : ByteBuffer,
     pub auras          : ByteBuffer,
     pub immunities     : ByteBuffer,
@@ -43,7 +42,6 @@ pub struct VectorCache
     pub names:       Vec::<CachedIndex::<u16>>, //TODO Expand to 32 bits QUICKLY
     pub gs:          Vec::<CachedIndex::<u16>>,
     pub pe:          Vec::<CachedIndex::<u16>>,
-    pub alignment:   Vec::<CachedIndex::<u16>>,
     pub types:       Vec::<CachedIndex::<u16>>,
     pub subtypes:    Vec::<CachedIndex::<u16>>,
     pub archetypes:  Vec::<CachedIndex::<u16>>,
@@ -74,7 +72,6 @@ impl VectorCache
             names:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             gs:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             pe:          Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            alignment:   Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             types:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             subtypes:    Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             archetypes:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
@@ -133,7 +130,6 @@ pub fn dump_buffers(buf_context: &Buffer_Context)
     println!("Name:        {}", buf_context.name.len());
     println!("gs:          {}", buf_context.gs.len());
     println!("pe:          {}", buf_context.pe.len());
-    println!("alignment:   {}", buf_context.alignment.len());
     println!("types:       {}", buf_context.types.len());
     println!("subtypes:    {}", buf_context.subtypes.len());
     println!("archetypes:  {}", buf_context.archetypes.len());
@@ -160,7 +156,6 @@ pub fn total_buffers_size(buf_context: &Buffer_Context) -> usize
     total_size += buf_context.name.len();
     total_size += buf_context.gs.len();
     total_size += buf_context.pe.len();
-    total_size += buf_context.alignment.len();
     total_size += buf_context.types.len();
     total_size += buf_context.subtypes.len();
     total_size += buf_context.archetypes.len();

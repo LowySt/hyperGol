@@ -6,6 +6,7 @@ use crate::parse_util::*;
 use crate::pages::*;
 use crate::skills::*;
 use crate::talents::*;
+use crate::alignment::*;
 
 pub const STAT_IDX_IN_ARR:    usize = 0;
 pub const BAB_IDX_IN_ARR:     usize = 1;
@@ -110,6 +111,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     let class_check   = ["Allineamento: ", "Categoria: ", "(", ")"];
     let mut class_arr = fill_array_from_available(&page.class, &class_check);
+    
+    //println!("[{file_idx}]: {:#?}", class_arr[1]);
     
     //NOTE: Manually fix the category block
     let mut subtypes_count = 0;
@@ -345,7 +348,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
     let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
-    let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    //let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    let align_idx      = map_alignment(class_arr[1], head_arr[0]);
     let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
     for s in 0..subtypes_count
@@ -827,7 +831,8 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
     let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
-    let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    //let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
+    let align_idx      = map_alignment(class_arr[1], head_arr[0]);
     let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
     for s in 0..subtypes_count
