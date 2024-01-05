@@ -19,7 +19,7 @@ pub struct Buffer_Context
     pub senses         : ByteBuffer,
     pub auras          : ByteBuffer,
     pub immunities     : ByteBuffer,
-    pub resistances    : ByteBuffer,
+    pub resistances    : ByteBuffer, //TODO: Map these to 2 u32 values.8ish bitfield to choose the type, 4 6bit values
     pub weaknesses     : ByteBuffer,
     pub special_attack : ByteBuffer, //TODO: Remove. Not used
     pub spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
@@ -40,7 +40,7 @@ pub struct VectorCache
 {
     pub strings:     Vec::<CachedIndex::<u32>>,
     pub numbers:     Vec::<CachedIndex::<u16>>,
-    pub names:       Vec::<CachedIndex::<u16>>, //TODO We are gonna surpass 16bits veery soon!
+    pub names:       Vec::<CachedIndex::<u16>>, //TODO Expand to 32 bits QUICKLY
     pub gs:          Vec::<CachedIndex::<u16>>,
     pub pe:          Vec::<CachedIndex::<u16>>,
     pub alignment:   Vec::<CachedIndex::<u16>>,
