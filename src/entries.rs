@@ -7,6 +7,7 @@ use crate::pages::*;
 use crate::skills::*;
 use crate::talents::*;
 use crate::alignment::*;
+use crate::gs::*;
 
 pub const STAT_IDX_IN_ARR:    usize = 0;
 pub const BAB_IDX_IN_ARR:     usize = 1;
@@ -59,10 +60,9 @@ pub struct Mob_Entry
     pub treasure   : u32,            // 360
     pub desc       : u32,            // 364
     pub source     : u32,            // 368
+    pub name       : u32,            // 370
     
-    pub name       : u16,            // 370
     pub gs         : u16,            // 372
-    pub pe         : u16,            // 374 //TODO: Remove this. It's obtainable from GS
     pub align      : u16,            // 376
     pub typ        : u16,            // 378
     pub sub        : [u16; 8],       // 394
@@ -338,9 +338,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     
     //Header
-    let name_idx = add_entry_if_missing(&mut cache.names, &mut bufs.name, head_arr[0]);
-    let gs_idx   = add_entry_if_missing(&mut cache.gs, &mut bufs.gs, head_arr[1]);
-    let pe_idx   = add_entry_if_missing(&mut cache.pe, &mut bufs.pe, head_arr[2]);
+    let name_idx = add_entry_if_missing_u32(&mut cache.names, &mut bufs.name, head_arr[0]);
+    let gs_idx   = map_gs(head_arr[1], head_arr[0]);
     
     //Class Info
     let mut subtypes_idx = [0u16; 8];
@@ -348,7 +347,6 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
     let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
-    //let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
     let align_idx      = map_alignment(class_arr[1], head_arr[0]);
     let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
@@ -460,7 +458,6 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let mut entry = Mob_Entry {
         name: name_idx,
         gs: gs_idx,
-        pe: pe_idx,
         origin: origin_idx,
         short_desc: short_desc_idx,
         align: align_idx,
@@ -550,10 +547,9 @@ pub struct NPC_Entry
     pub specials   : [u32; 24],      // 
     pub desc       : u32,            // 
     pub source     : u32,            // 
+    pub name       : u32,            // 
     
-    pub name       : u16,            // 
     pub gs         : u16,            // 
-    pub pe         : u16,            // 
     pub align      : u16,            // 
     pub typ        : u16,            // 
     pub sub        : [u16; 8],       // 
@@ -821,9 +817,8 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     // ----------------
     
     //Header
-    let name_idx = add_entry_if_missing(&mut cache.names, &mut bufs.name, head_arr[0]);
-    let gs_idx   = add_entry_if_missing(&mut cache.gs, &mut bufs.gs, head_arr[1]);
-    let pe_idx   = add_entry_if_missing(&mut cache.pe, &mut bufs.pe, head_arr[2]);
+    let name_idx = add_entry_if_missing_u32(&mut cache.names, &mut bufs.name, head_arr[0]);
+    let gs_idx   = map_gs(head_arr[1], head_arr[0]);
     
     //Class Info
     let mut subtypes_idx = [0u16; 8];
@@ -950,7 +945,6 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let mut entry = NPC_Entry {
         name: name_idx,
         gs: gs_idx,
-        pe: pe_idx,
         origin: origin_idx,
         short_desc: short_desc_idx,
         align: align_idx,

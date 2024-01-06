@@ -40,6 +40,9 @@ use crate::talents::*;
 pub mod alignment;
 use crate::alignment::*;
 
+pub mod gs;
+use crate::gs::*;
+
 /* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
 Elapsed:                      34014 ms
@@ -358,8 +361,6 @@ fn main() -> Result<(), isahc::Error> {
         string         : ByteBuffer::from_bytes(&[0u8;4]),
         number         : ByteBuffer::from_bytes(&[0u8;4]),
         name           : ByteBuffer::from_bytes(&[0u8;4]),
-        gs             : ByteBuffer::from_bytes(&[0u8;4]),
-        pe             : ByteBuffer::from_bytes(&[0u8;4]),
         types          : ByteBuffer::from_bytes(&[0u8;4]),
         subtypes       : ByteBuffer::from_bytes(&[0u8;4]),
         archetypes     : ByteBuffer::from_bytes(&[0u8;4]),
@@ -398,8 +399,6 @@ fn main() -> Result<(), isahc::Error> {
         let mut mob_entries_vec = Vec::with_capacity(array_of_paths.len() + 200);
         let mut npc_entries_vec = Vec::with_capacity(array_of_npc_paths.len() + 200);
         
-        //let mut strings_cache = Vec::<CachedIndex>::with_capacity(4096);
-        
         let talentModuleFile  = fs::read("TalentsModule").expect("TalentsModule not found or couldn't read!");
         let mut talentsModule = ByteBuffer::from_bytes(&talentModuleFile);
         
@@ -407,8 +406,6 @@ fn main() -> Result<(), isahc::Error> {
         for file_idx in 0..array_of_paths.len()
             //for file_idx in 1248..1249
         {
-            if file_idx == 263 { println!("{:#?}", array_of_paths[file_idx]); }
-            
             //println!("{file_idx} {:#?}", array_of_paths[file_idx]);
             /*
     if array_of_paths[file_idx] == "https://golarion.altervista.org/wiki/Malziarax" {
@@ -469,8 +466,6 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all(&buf_context.string.to_bytes());
         result_file.write_all(&buf_context.number.to_bytes());
         result_file.write_all(&buf_context.name.to_bytes());
-        result_file.write_all(&buf_context.gs.to_bytes());
-        result_file.write_all(&buf_context.pe.to_bytes());
         result_file.write_all(&buf_context.types.to_bytes());
         result_file.write_all(&buf_context.subtypes.to_bytes());
         result_file.write_all(&buf_context.archetypes.to_bytes());
@@ -528,7 +523,6 @@ fn main() -> Result<(), isahc::Error> {
             
             result_file.write_all([entry.name].as_byte_slice());
             result_file.write_all([entry.gs].as_byte_slice());
-            result_file.write_all([entry.pe].as_byte_slice());
             result_file.write_all([entry.align].as_byte_slice());
             result_file.write_all([entry.typ].as_byte_slice());
             
@@ -605,7 +599,6 @@ fn main() -> Result<(), isahc::Error> {
             
             result_file.write_all([entry.name].as_byte_slice());
             result_file.write_all([entry.gs].as_byte_slice());
-            result_file.write_all([entry.pe].as_byte_slice());
             result_file.write_all([entry.align].as_byte_slice());
             result_file.write_all([entry.typ].as_byte_slice());
             
