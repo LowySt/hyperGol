@@ -43,6 +43,9 @@ use crate::alignment::*;
 pub mod gs;
 use crate::gs::*;
 
+pub mod hp;
+use crate::hp::*;
+
 /* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
 Elapsed:                      34014 ms
@@ -445,6 +448,7 @@ fn main() -> Result<(), isahc::Error> {
             }
         }
         println!("End NPCs");
+        panic!();
         
         println!("Mob Count: {}", mob_entries_vec.len());
         println!("NPC Count: {}", npc_entries_vec.len());

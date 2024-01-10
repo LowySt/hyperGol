@@ -8,6 +8,7 @@ use crate::skills::*;
 use crate::talents::*;
 use crate::alignment::*;
 use crate::gs::*;
+use crate::hp::*;
 
 pub const STAT_IDX_IN_ARR:    usize = 0;
 pub const BAB_IDX_IN_ARR:     usize = 1;
@@ -379,7 +380,10 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
+    
     let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let pf_test           = map_or_intern_hp(defense_arr[1], &page.page_addr);
+    
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
     let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);
     let ri_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[4]);
@@ -862,7 +866,10 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
+    
     let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let pf_test           = map_or_intern_hp(defense_arr[1], &page.page_addr);
+    
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
     let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);
     let ri_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[4]);
