@@ -38,58 +38,59 @@ macro_rules! check_unwrap
 #[derive(Debug)]
 pub struct Mob_Entry
 {
-    pub origin     : u32,            // 4
-    pub short_desc : u32,            // 8
-    pub ac         : u32,            // 12
-    pub pf         : u32,            // 16
-    pub st         : u32,            // 20
-    pub rd         : u32,            // 24
-    pub ri         : u32,            // 28
-    pub def_cap    : u32,            // 32
-    pub melee      : u32,            // 36
-    pub ranged     : u32,            // 40
-    pub spec_atk   : u32,            // 44
-    pub psych      : u32,            // 48
-    pub magics     : u32,            // 52
-    pub spells     : u32,            // 56
-    pub skills     : [u32; 24],      // 152
-    pub talents    : [u32; 24],      // 248
-    pub racial_mods: u32,            // 252
-    pub spec_qual  : u32,            // 256
-    pub specials   : [u32; 24],      // 352
-    pub org        : u32,            // 356
-    pub treasure   : u32,            // 360
-    pub desc       : u32,            // 364
-    pub source     : u32,            // 368
-    pub name       : u32,            // 370
+    pub pf         : u64,            // 8
     
-    pub gs         : u16,            // 372
-    pub align      : u16,            // 376
-    pub typ        : u16,            // 378
-    pub sub        : [u16; 8],       // 394
-    pub arch       : [u16; 4],       // 402
-    pub size       : u16,            // 404
-    pub init       : u16,            // 406
-    pub senses     : [u16; 8],       // 422
-    pub perception : u16,            // 424
-    pub aura       : u16,            // 426
-    pub immunities : [u16; 16],      // 458
-    pub resistances: [u16; 16],      // 490
-    pub weaknesses : [u16; 16],      // 522
-    pub speed      : u16,            // 524
-    pub space      : u16,            // 526
-    pub reach      : u16,            // 528
-    pub str        : u16,            // 530
-    pub dex        : u16,            // 532
-    pub con        : u16,            // 534
-    pub int        : u16,            // 536
-    pub wis        : u16,            // 538
-    pub cha        : u16,            // 540
-    pub bab        : u16,            // 542
-    pub cmb        : u16,            // 544
-    pub cmd        : u16,            // 546
-    pub lang       : [u16; 24],      // 594
-    pub env        : u16,            // 596
+    pub origin     : u32,            // 12
+    pub short_desc : u32,            // 16
+    pub ac         : u32,            // 20
+    pub st         : u32,            // 24
+    pub rd         : u32,            // 28
+    pub ri         : u32,            // 32
+    pub def_cap    : u32,            // 36
+    pub melee      : u32,            // 40
+    pub ranged     : u32,            // 44
+    pub spec_atk   : u32,            // 48
+    pub psych      : u32,            // 52
+    pub magics     : u32,            // 56
+    pub spells     : u32,            // 60
+    pub skills     : [u32; 24],      // 156
+    pub talents    : [u32; 24],      // 252
+    pub racial_mods: u32,            // 256
+    pub spec_qual  : u32,            // 260
+    pub specials   : [u32; 24],      // 356
+    pub org        : u32,            // 360
+    pub treasure   : u32,            // 364
+    pub desc       : u32,            // 368
+    pub source     : u32,            // 372
+    pub name       : u32,            // 374
+    
+    pub gs         : u16,            // 378
+    pub align      : u16,            // 380
+    pub typ        : u16,            // 382
+    pub sub        : [u16; 8],       // 398
+    pub arch       : [u16; 4],       // 406
+    pub size       : u16,            // 408
+    pub init       : u16,            // 410
+    pub senses     : [u16; 8],       // 426
+    pub perception : u16,            // 428
+    pub aura       : u16,            // 430
+    pub immunities : [u16; 16],      // 462
+    pub resistances: [u16; 16],      // 494
+    pub weaknesses : [u16; 16],      // 526
+    pub speed      : u16,            // 528
+    pub space      : u16,            // 530
+    pub reach      : u16,            // 532
+    pub str        : u16,            // 534
+    pub dex        : u16,            // 536
+    pub con        : u16,            // 538
+    pub int        : u16,            // 540
+    pub wis        : u16,            // 542
+    pub cha        : u16,            // 544
+    pub bab        : u16,            // 546
+    pub cmb        : u16,            // 548
+    pub cmd        : u16,            // 550
+    pub lang       : [u16; 24],      // 598
+    pub env        : u16,            // 600
 }
 
 pub static mut create_mob_entry_prepare_time: u128 = 0u128;
@@ -381,8 +382,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
     
-    let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
-    let pf_test           = map_or_intern_hp(defense_arr[1], &page.page_addr);
+    //let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let pf_idx            = map_or_intern_hp(defense_arr[1], &page.page_addr);
     
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
     let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);
@@ -526,23 +527,24 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
 #[derive(Debug)]
 pub struct NPC_Entry
 {
-    pub origin     : u32,            // 4
-    pub short_desc : u32,            // 8
-    pub ac         : u32,            // 12
-    pub pf         : u32,            // 16
-    pub st         : u32,            // 20
-    pub rd         : u32,            // 24
-    pub ri         : u32,            // 28
-    pub def_cap    : u32,            // 32
-    pub melee      : u32,            // 36
-    pub ranged     : u32,            // 40
-    pub spec_atk   : u32,            // 44
-    pub psych      : u32,            // 48
-    pub magics     : u32,            // 52
-    pub spells     : u32,            // 56
-    pub tactics    : [u32; 3],       // 68
-    pub skills     : [u32; 24],      // 164
-    pub talents    : [u32; 24],      // 260
+    pub pf         : u64,            // 
+    
+    pub origin     : u32,            // 
+    pub short_desc : u32,            // 
+    pub ac         : u32,            // 
+    pub st         : u32,            // 
+    pub rd         : u32,            // 
+    pub ri         : u32,            // 
+    pub def_cap    : u32,            // 
+    pub melee      : u32,            // 
+    pub ranged     : u32,            // 
+    pub spec_atk   : u32,            // 
+    pub psych      : u32,            // 
+    pub magics     : u32,            // 
+    pub spells     : u32,            // 
+    pub tactics    : [u32; 3],       // 
+    pub skills     : [u32; 24],      // 
+    pub talents    : [u32; 24],      // 
     pub racial_mods: u32,            // 
     pub spec_qual  : u32,            // 
     pub given_equip: u32,            // 
@@ -578,7 +580,7 @@ pub struct NPC_Entry
     pub bab        : u16,            // 
     pub cmb        : u16,            // 
     pub cmd        : u16,            // 
-    pub lang       : [u16; 24],      // 610
+    pub lang       : [u16; 24],      // 614
 }
 
 pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context, 
@@ -867,8 +869,8 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
     
-    let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
-    let pf_test           = map_or_intern_hp(defense_arr[1], &page.page_addr);
+    //let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
+    let pf_idx            = map_or_intern_hp(defense_arr[1], &page.page_addr);
     
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
     let rd_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[3]);

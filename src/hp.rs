@@ -24,12 +24,14 @@ use crate::parse_util::*;
 // The 2 bits [61] [60] are currently unused
 
 const HP_MAX_DICE_COUNT: usize = 4;
-const HP_OPTION_VAL_MAX: u64 = 64;
-
-const HP_FLAT_OFFSET: usize = 30;
-const HP_OPTION_TYPE_OFFSET: usize = 42;
-const HP_OPTION_VAL_OFFSET: usize = 52;
 const HP_DIE_BITLEN: usize = 9;
+const HP_DIE_FACE_BITLEN: usize = 3;
+const HP_DIE_COUNT_BITLEN: usize = 6;
+
+const HP_OPTION_VAL_MAX: u64 = 64;
+const HP_FLAT_OFFSET: usize = 36;
+const HP_OPTION_TYPE_OFFSET: usize = 47;
+const HP_OPTION_VAL_OFFSET: usize = 54;
 const HP_FLAT_NEGATIVE_BIT: u64 = 0x8000000000000000;
 const HP_IRA_BIT:           u64 = 0x4000000000000000;
 
@@ -166,7 +168,7 @@ fn map_hp_expr(field: &str, page_name: &str) -> HpExpr
             _ => { todo!("Unhandled die face in {field} from {page_name}"); }
         };
         
-        let HD: u16 = ((dice_count & 0x3F) << HP_DIE_BITLEN) | (dice_face_idx & 0x0007);
+        let HD: u16 = ((dice_count & 0x3F) << HP_DIE_FACE_BITLEN) | (dice_face_idx & 0x0007);
         return HpExpr::Hp_Die(HD as u64);
     }
     else {
@@ -404,15 +406,15 @@ pub fn map_or_intern_hp(field: &str, page_name: &str) -> u64
         return final_value;
     }
     
-    if real_field.contains("Campo di Forza") {
-        let option_type: u64 = HP_Options_Type::HP_Campo_Forza as u64;
+    if real_field.contains("Guarigione dal Sangue") {
+        let option_type: u64 = HP_Options_Type::HP_Guarigione_Sangue as u64;
         final_value |= (option_type << HP_OPTION_TYPE_OFFSET);
         
         return final_value;
     }
     
-    if real_field.contains("Guarigione dal Sangue") {
-        let option_type: u64 = HP_Options_Type::HP_Guarigione_Sangue as u64;
+    if real_field.contains("Campo di Forza") {
+        let option_type: u64 = HP_Options_Type::HP_Campo_Forza as u64;
         final_value |= (option_type << HP_OPTION_TYPE_OFFSET);
         
         return final_value;

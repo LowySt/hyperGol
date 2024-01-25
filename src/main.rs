@@ -448,7 +448,6 @@ fn main() -> Result<(), isahc::Error> {
             }
         }
         println!("End NPCs");
-        panic!();
         
         println!("Mob Count: {}", mob_entries_vec.len());
         println!("NPC Count: {}", npc_entries_vec.len());
@@ -497,10 +496,11 @@ fn main() -> Result<(), isahc::Error> {
         
         for mut entry in mob_entries_vec
         {
+            result_file.write_all([entry.pf].as_byte_slice());
+            
             result_file.write_all([entry.origin].as_byte_slice());
             result_file.write_all([entry.short_desc].as_byte_slice());
             result_file.write_all([entry.ac].as_byte_slice());
-            result_file.write_all([entry.pf].as_byte_slice());
             result_file.write_all([entry.st].as_byte_slice());
             result_file.write_all([entry.rd].as_byte_slice());
             result_file.write_all([entry.ri].as_byte_slice());
@@ -569,10 +569,11 @@ fn main() -> Result<(), isahc::Error> {
         
         for mut entry in npc_entries_vec
         {
+            result_file.write_all([entry.pf].as_byte_slice());
+            
             result_file.write_all([entry.origin].as_byte_slice());
             result_file.write_all([entry.short_desc].as_byte_slice());
             result_file.write_all([entry.ac].as_byte_slice());
-            result_file.write_all([entry.pf].as_byte_slice());
             result_file.write_all([entry.st].as_byte_slice());
             result_file.write_all([entry.rd].as_byte_slice());
             result_file.write_all([entry.ri].as_byte_slice());
@@ -637,7 +638,7 @@ fn main() -> Result<(), isahc::Error> {
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
-            //          4 byte aligned, and the next closest byte alignment is 612 bytes
+            //          4 byte aligned, and the next closest byte alignment is 616 bytes
             //         (2 more than the current structure)
             result_file.write_all(&byte_padding);
         }
