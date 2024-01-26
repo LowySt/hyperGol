@@ -9,6 +9,7 @@ use crate::talents::*;
 use crate::alignment::*;
 use crate::gs::*;
 use crate::hp::*;
+use crate::size::*;
 
 pub const STAT_IDX_IN_ARR:    usize = 0;
 pub const BAB_IDX_IN_ARR:     usize = 1;
@@ -103,8 +104,6 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let cme_now = Instant::now();
     //-----------------------------
     
-    //TODO: GS Should just be stored as a number
-    //      PE Should be completely removed and obtained directly from GS
     let head_check    = ["GS", "PE:"];
     let head_arr      = fill_array_from_available(&page.header, &head_check);
     
@@ -309,10 +308,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
         
         if el == GLOBAL_NULL { break; }
         
-        //println!("{:#?}\n\n", el);
         specials_arr.push(el);
     }
-    //println!("{:#?}", specials_arr);
     
     let ecology_check   = ["Organizzazione:", "Tesoro:"];
     let mut ecology_arr = fill_array_from_available(&page.ecology, &ecology_check);
@@ -358,7 +355,8 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     for arch in 0..arch_count
     { arch_idx[arch]   = add_entry_if_missing(&mut cache.archetypes, &mut bufs.archetypes, class_arr[4+subtypes_off+arch]); }
     
-    let size_idx       = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, class_arr[5+arch_off]);
+    let normalized_size = normalize_size(class_arr[5+arch_off], head_arr[0]);
+    let size_idx        = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, normalized_size);
     
     //Misc
     let mut senses_idx = [0u16; 8];
@@ -832,7 +830,6 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     let origin_idx     = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, &page.origin);
     let short_desc_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, class_arr[0]);
-    //let align_idx      = add_entry_if_missing(&mut cache.alignment, &mut bufs.alignment, class_arr[1]);
     let align_idx      = map_alignment(class_arr[1], head_arr[0]);
     let type_idx       = add_entry_if_missing(&mut cache.types, &mut bufs.types, class_arr[2]);
     
@@ -845,7 +842,8 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
         arch_idx[arch] = add_entry_if_missing(&mut cache.archetypes, &mut bufs.archetypes, class_arr[off]);
     }
     
-    let size_idx       = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, class_arr[5+arch_off]);
+    let normalized_size = normalize_size(class_arr[5+arch_off], head_arr[0]);
+    let size_idx        = add_entry_if_missing(&mut cache.sizes, &mut bufs.sizes, normalized_size);
     
     //Misc
     let mut senses_idx = [0u16; 8];

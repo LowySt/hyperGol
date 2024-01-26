@@ -46,6 +46,9 @@ use crate::gs::*;
 pub mod hp;
 use crate::hp::*;
 
+pub mod size;
+use crate::size::*;
+
 /* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
 Elapsed:                      34014 ms
