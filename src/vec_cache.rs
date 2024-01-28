@@ -12,11 +12,11 @@ pub struct Buffer_Context
     pub types          : ByteBuffer,
     pub subtypes       : ByteBuffer,
     pub archetypes     : ByteBuffer,
-    pub sizes          : ByteBuffer, //TODO: Incorporate into string. Or map it to an int?
+    pub sizes          : ByteBuffer,
     pub senses         : ByteBuffer,
     pub auras          : ByteBuffer,
     pub immunities     : ByteBuffer,
-    pub resistances    : ByteBuffer, //TODO: Map these to 2 u32 values.8ish bitfield to choose the type, 4 6bit values
+    pub resistances    : ByteBuffer, //TODO: Map these to 2 u32 values.4 bits to choose the type, 6bit value
     pub weaknesses     : ByteBuffer,
     pub special_attack : ByteBuffer, //TODO: Remove. Not used
     pub spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things

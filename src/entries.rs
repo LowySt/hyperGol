@@ -10,7 +10,9 @@ use crate::alignment::*;
 use crate::gs::*;
 use crate::hp::*;
 use crate::size::*;
+use crate::resistance::*;
 
+//NOTE: Indices into the Stats Array
 pub const STAT_IDX_IN_ARR:    usize = 0;
 pub const BAB_IDX_IN_ARR:     usize = 1;
 pub const BMC_IDX_IN_ARR:     usize = 2;
@@ -20,6 +22,18 @@ pub const SKILLS_IDX_IN_ARR:  usize = 5;
 pub const LANG_IDX_IN_ARR:    usize = 6;
 pub const RACE_IDX_IN_ARR:    usize = 7;
 pub const SPEC_IDX_IN_ARR:    usize = 8;
+
+
+//NOTE: Indices into the Defense Array
+pub const AC_IDX_IN_ARR:   usize = 0;
+pub const HP_IDX_IN_ARR:   usize = 1;
+pub const ST_IDX_IN_ARR:   usize = 2;
+pub const RD_IDX_IN_ARR:   usize = 3;
+pub const RI_IDX_IN_ARR:   usize = 4;
+pub const IMM_IDX_IN_ARR:  usize = 5;
+pub const RES_IDX_IN_ARR:  usize = 6;
+pub const DCAP_IDX_IN_ARR: usize = 7;
+pub const WEAK_IDX_IN_ARR: usize = 8;
 
 
 //TODO: Remove this bullshit
@@ -40,6 +54,7 @@ macro_rules! check_unwrap
 pub struct Mob_Entry
 {
     pub pf         : u64,            // 8
+    pub resistances: u64,
     
     pub origin     : u32,            // 12
     pub short_desc : u32,            // 16
@@ -76,22 +91,22 @@ pub struct Mob_Entry
     pub perception : u16,            // 428
     pub aura       : u16,            // 430
     pub immunities : [u16; 16],      // 462
-    pub resistances: [u16; 16],      // 494
-    pub weaknesses : [u16; 16],      // 526
-    pub speed      : u16,            // 528
-    pub space      : u16,            // 530
-    pub reach      : u16,            // 532
-    pub str        : u16,            // 534
-    pub dex        : u16,            // 536
-    pub con        : u16,            // 538
-    pub int        : u16,            // 540
-    pub wis        : u16,            // 542
-    pub cha        : u16,            // 544
-    pub bab        : u16,            // 546
-    pub cmb        : u16,            // 548
-    pub cmd        : u16,            // 550
-    pub lang       : [u16; 24],      // 598
-    pub env        : u16,            // 600
+    //pub resistances: [u16; 16],      // 494
+    pub weaknesses : [u16; 16],      //
+    pub speed      : u16,            //
+    pub space      : u16,            //
+    pub reach      : u16,            //
+    pub str        : u16,            //
+    pub dex        : u16,            //
+    pub con        : u16,            //
+    pub int        : u16,            //
+    pub wis        : u16,            // 
+    pub cha        : u16,            // 
+    pub bab        : u16,            // 
+    pub cmb        : u16,            // 
+    pub cmd        : u16,            // 
+    pub lang       : [u16; 24],      // 
+    pub env        : u16,            // 576
 }
 
 pub static mut create_mob_entry_prepare_time: u128 = 0u128;
@@ -225,27 +240,29 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let mut defense_arr = fill_array_from_available(&page.defense, &defense_check);
     
     let mut immunities_count = 0;
-    if !defense_arr[5].is_empty()
+    if !defense_arr[IMM_IDX_IN_ARR].is_empty()
     {
-        immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
+        immunities_count = flatten_str_list(&mut defense_arr, IMM_IDX_IN_ARR, ", ");
     }
     
+    let mut resistances_idx: u64 = 0u64;
     let mut res_count = 0;
     let res_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
-    if !defense_arr[6+res_offset].is_empty()
+    if !defense_arr[RES_IDX_IN_ARR+res_offset].is_empty()
     {
-        res_count = flatten_str_list(&mut defense_arr, 6+res_offset, ", ");
+        //res_count = flatten_str_list(&mut defense_arr, RES_IDX_IN_ARR+res_offset, ", ");
+        resistances_idx = prepare_and_map_resistances(&mut defense_arr, res_offset, &page.page_addr);
     }
     
     let mut weak_count = 0;
     let weak_offset = if res_count > 0 { (res_count - 1) + res_offset } else { res_offset };
-    if !defense_arr[8+weak_offset].is_empty()
+    if !defense_arr[WEAK_IDX_IN_ARR+weak_offset].is_empty()
     {
-        weak_count = flatten_str_list(&mut defense_arr, 8+weak_offset, ", ");
+        weak_count = flatten_str_list(&mut defense_arr, WEAK_IDX_IN_ARR+weak_offset, ", ");
     }
     
     //NOTE: Manually fix AC
-    defense_arr[0] = defense_arr[0].get(4..).unwrap();
+    defense_arr[AC_IDX_IN_ARR] = defense_arr[AC_IDX_IN_ARR].get(4..).unwrap();
     
     //TODO Maybe further parsing to compress and better separate attacks and spell strings?
     let attack_check   = ["Mischia:", "Distanza:", "Attacchi Speciali:", "Spazio:", "Portata:",
@@ -374,7 +391,7 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
-    let mut resistances_idx = [0u16; 16];
+    //let mut resistances_idx = [0u16; 16];
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
@@ -390,11 +407,12 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
+    /*
     for r in 0..res_count
     {
-        let off = 6+res_offset+r;
         resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
-    }
+        }
+    */
     
     let def_cap_off = 7 + weak_offset;
     let defensive_cap_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);
@@ -526,6 +544,7 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
 pub struct NPC_Entry
 {
     pub pf         : u64,            // 
+    pub resistances: u64,      // 
     
     pub origin     : u32,            // 
     pub short_desc : u32,            // 
@@ -564,7 +583,7 @@ pub struct NPC_Entry
     pub perception : u16,            // 
     pub aura       : u16,            // 
     pub immunities : [u16; 16],      // 
-    pub resistances: [u16; 16],      // 
+    //pub resistances: [u16; 16],      // 
     pub weaknesses : [u16; 16],      // 
     pub speed      : u16,            // 
     pub space      : u16,            // 
@@ -578,7 +597,7 @@ pub struct NPC_Entry
     pub bab        : u16,            // 
     pub cmb        : u16,            // 
     pub cmd        : u16,            // 
-    pub lang       : [u16; 24],      // 614
+    pub lang       : [u16; 24],      // 592
 }
 
 pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context, 
@@ -714,11 +733,13 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
         immunities_count = flatten_str_list(&mut defense_arr, 5, ", ");
     }
     
+    let mut resistances_idx: u64 = 0u64;
     let mut res_count = 0;
     let res_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
     if !defense_arr[6+res_offset].is_empty()
     {
-        res_count = flatten_str_list(&mut defense_arr, 6+res_offset, ", ");
+        //res_count = flatten_str_list(&mut defense_arr, 6+res_offset, ", ");
+        resistances_idx = prepare_and_map_resistances(&mut defense_arr, res_offset, &page.page_addr);
     }
     
     let mut weak_count = 0;
@@ -861,7 +882,7 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
-    let mut resistances_idx = [0u16; 16];
+    //let mut resistances_idx = [0u16; 16];
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
@@ -877,11 +898,13 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
+    /*
     for r in 0..res_count
     {
         let off = 6+res_offset+r;
         resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
     }
+    */
     
     let def_cap_off = 7 + weak_offset;
     let defensive_cap_idx  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);

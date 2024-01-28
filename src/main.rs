@@ -13,6 +13,7 @@ use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::prelude::*;
 use std::env;
+use std::mem;
 use bytebuffer::ByteBuffer;
 use widestring::Utf32String;
 use byte_slice_cast::*;
@@ -48,6 +49,9 @@ use crate::hp::*;
 
 pub mod size;
 use crate::size::*;
+
+pub mod resistance;
+use crate::resistance::*;
 
 /* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
@@ -493,6 +497,9 @@ fn main() -> Result<(), isahc::Error> {
         
         let byte_padding = [0u8, 0u8];
         
+        //NOTE: Inform the user about the struct's byte size.
+        println!("Mob Entry is {} bytes long", mem::size_of::<Mob_Entry>());
+        
         //NOTE: Write Mob Entries
         let mob_vec_len = mob_entries_vec.len() as u32;
         result_file.write_all([mob_vec_len].as_byte_slice());
@@ -500,6 +507,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut entry in mob_entries_vec
         {
             result_file.write_all([entry.pf].as_byte_slice());
+            result_file.write_all([entry.resistances].as_byte_slice());
             
             result_file.write_all([entry.origin].as_byte_slice());
             result_file.write_all([entry.short_desc].as_byte_slice());
@@ -545,7 +553,7 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.aura].as_byte_slice());
             
             for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
-            for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
+            //for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.speed].as_byte_slice());
@@ -566,6 +574,9 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.env].as_byte_slice());
         }
         
+        //NOTE: Inform the user about the struct's byte size.
+        println!("NPC Entry is {} bytes long", mem::size_of::<NPC_Entry>());
+        
         //NOTE: Write NPC Entries
         let npc_vec_len = npc_entries_vec.len() as u32;
         result_file.write_all([npc_vec_len].as_byte_slice());
@@ -573,6 +584,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut entry in npc_entries_vec
         {
             result_file.write_all([entry.pf].as_byte_slice());
+            result_file.write_all([entry.resistances].as_byte_slice());
             
             result_file.write_all([entry.origin].as_byte_slice());
             result_file.write_all([entry.short_desc].as_byte_slice());
@@ -622,7 +634,7 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.aura].as_byte_slice());
             
             for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
-            for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
+            //for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.speed].as_byte_slice());
@@ -641,8 +653,7 @@ fn main() -> Result<(), isahc::Error> {
             for mut el in entry.lang    { result_file.write_all([el].as_byte_slice()); }
             
             //NOTETODO: We are adding 2 bytes of Padding because the C++ structure expects the data to be
-            //          4 byte aligned, and the next closest byte alignment is 616 bytes
-            //         (2 more than the current structure)
+            //          Aligned to the largest alignment (Currently 8 because of the u64)
             result_file.write_all(&byte_padding);
         }
         

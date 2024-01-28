@@ -1,4 +1,5 @@
 use crate::pages::*;
+use crate::entries::*;
 use crate::parse_util::*;
 use crate::vec_cache::*;
 
@@ -813,14 +814,14 @@ pub fn prepare_skill_str(stats_arr: &mut Vec<&str>, cache: &mut VectorCache,
                          bufs: &mut Buffer_Context, page_addr: &str, skill_off: usize) -> [u32; 24]
 {
     //NOTE: Early exit when there's no skills.
-    if stats_arr[5+skill_off] == "-" { return [0u32; 24]; }
+    if stats_arr[SKILLS_IDX_IN_ARR + skill_off] == "-" { return [0u32; 24]; }
     
     let mut result_arr = [0u32; 24];
     let mut result_idx = 0;
     
     //NOTE: Removing from the array doesn't work, because the elements are precisely placed. So we copy
     let trim_check: &[_] = &[' ', ',', ';', '.'];
-    let base = stats_arr[5 + skill_off].trim_matches(trim_check);
+    let base = stats_arr[SKILLS_IDX_IN_ARR + skill_off].trim_matches(trim_check);
     
     let mut skill_field = Skill_Field {
         skill_block: "",
