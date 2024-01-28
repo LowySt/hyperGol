@@ -16,7 +16,6 @@ pub struct Buffer_Context
     pub senses         : ByteBuffer,
     pub auras          : ByteBuffer,
     pub immunities     : ByteBuffer,
-    pub resistances    : ByteBuffer, //TODO: Map these to 2 u32 values.4 bits to choose the type, 6bit value
     pub weaknesses     : ByteBuffer,
     pub special_attack : ByteBuffer, //TODO: Remove. Not used
     pub spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
@@ -45,7 +44,6 @@ pub struct VectorCache
     pub senses:      Vec::<CachedIndex::<u16>>,
     pub auras:       Vec::<CachedIndex::<u16>>,
     pub immunities:  Vec::<CachedIndex::<u16>>,
-    pub resistances: Vec::<CachedIndex::<u16>>,
     pub weaknesses:  Vec::<CachedIndex::<u16>>,
     pub special:     Vec::<CachedIndex::<u16>>,
     pub spells:      Vec::<CachedIndex::<u32>>,
@@ -73,7 +71,6 @@ impl VectorCache
             senses:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             auras:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             immunities:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            resistances: Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             weaknesses:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             special:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             spells:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
@@ -129,7 +126,6 @@ pub fn dump_buffers(buf_context: &Buffer_Context)
     println!("senses:      {}", buf_context.senses.len());
     println!("auras:       {}", buf_context.auras.len());
     println!("immunities:  {}", buf_context.immunities.len());
-    println!("resistances: {}", buf_context.resistances.len());
     println!("weaknesses:  {}", buf_context.weaknesses.len());
     println!("attack:      {}", buf_context.special_attack.len());
     println!("spells:      {}", buf_context.spells.len());
@@ -153,7 +149,6 @@ pub fn total_buffers_size(buf_context: &Buffer_Context) -> usize
     total_size += buf_context.senses.len();
     total_size += buf_context.auras.len();
     total_size += buf_context.immunities.len();
-    total_size += buf_context.resistances.len();
     total_size += buf_context.weaknesses.len();
     total_size += buf_context.special_attack.len();
     total_size += buf_context.spells.len();

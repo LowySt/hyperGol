@@ -378,7 +378,6 @@ fn main() -> Result<(), isahc::Error> {
         senses         : ByteBuffer::from_bytes(&[0u8;4]),
         auras          : ByteBuffer::from_bytes(&[0u8;4]),
         immunities     : ByteBuffer::from_bytes(&[0u8;4]),
-        resistances    : ByteBuffer::from_bytes(&[0u8;4]),
         weaknesses     : ByteBuffer::from_bytes(&[0u8;4]),
         special_attack : ByteBuffer::from_bytes(&[0u8;4]),
         spells         : ByteBuffer::from_bytes(&[0u8;4]),
@@ -483,7 +482,6 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all(&buf_context.senses.to_bytes());
         result_file.write_all(&buf_context.auras.to_bytes());
         result_file.write_all(&buf_context.immunities.to_bytes());
-        result_file.write_all(&buf_context.resistances.to_bytes());
         result_file.write_all(&buf_context.weaknesses.to_bytes());
         result_file.write_all(&buf_context.special_attack.to_bytes());
         result_file.write_all(&buf_context.spells.to_bytes());

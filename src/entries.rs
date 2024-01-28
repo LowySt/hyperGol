@@ -91,7 +91,6 @@ pub struct Mob_Entry
     pub perception : u16,            // 428
     pub aura       : u16,            // 430
     pub immunities : [u16; 16],      // 462
-    //pub resistances: [u16; 16],      // 494
     pub weaknesses : [u16; 16],      //
     pub speed      : u16,            //
     pub space      : u16,            //
@@ -250,7 +249,6 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let res_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
     if !defense_arr[RES_IDX_IN_ARR+res_offset].is_empty()
     {
-        //res_count = flatten_str_list(&mut defense_arr, RES_IDX_IN_ARR+res_offset, ", ");
         resistances_idx = prepare_and_map_resistances(&mut defense_arr, res_offset, &page.page_addr);
     }
     
@@ -391,13 +389,11 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
-    //let mut resistances_idx = [0u16; 16];
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
     
-    //let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
     let pf_idx            = map_or_intern_hp(defense_arr[1], &page.page_addr);
     
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
@@ -407,15 +403,10 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
-    /*
-    for r in 0..res_count
-    {
-        resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
-        }
-    */
-    
     let def_cap_off = 7 + weak_offset;
     let defensive_cap_idx = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);
+    
+    //NOTE: Resistances are missing because have been already added
     
     for w in 0..weak_count
     {
@@ -435,8 +426,6 @@ pub fn create_mob_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let spells_idx   = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, attack_arr[8]);
     
     //Stats
-    //let mut talents_idx = [0u16; 24];
-    //let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
@@ -583,7 +572,6 @@ pub struct NPC_Entry
     pub perception : u16,            // 
     pub aura       : u16,            // 
     pub immunities : [u16; 16],      // 
-    //pub resistances: [u16; 16],      // 
     pub weaknesses : [u16; 16],      // 
     pub speed      : u16,            // 
     pub space      : u16,            // 
@@ -738,7 +726,6 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     let res_offset = if immunities_count > 0 { immunities_count - 1 } else { 0 };
     if !defense_arr[6+res_offset].is_empty()
     {
-        //res_count = flatten_str_list(&mut defense_arr, 6+res_offset, ", ");
         resistances_idx = prepare_and_map_resistances(&mut defense_arr, res_offset, &page.page_addr);
     }
     
@@ -882,13 +869,11 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     
     //Defense
     let mut immunities_idx  = [0u16; 16];
-    //let mut resistances_idx = [0u16; 16];
     let mut weaknesses_idx  = [0u16; 16];
     
     //TODO: See if I can move these into the numeric values buffer
     let ac_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[0]);
     
-    //let pf_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[1]);
     let pf_idx            = map_or_intern_hp(defense_arr[1], &page.page_addr);
     
     let st_idx            = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[2]);
@@ -898,13 +883,7 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     for i in 0..immunities_count
     { immunities_idx[i]   = add_entry_if_missing(&mut cache.immunities, &mut bufs.immunities, defense_arr[5+i]); }
     
-    /*
-    for r in 0..res_count
-    {
-        let off = 6+res_offset+r;
-        resistances_idx[r] = add_entry_if_missing(&mut cache.resistances, &mut bufs.resistances, defense_arr[off]);
-    }
-    */
+    //NOTE: Resistances are missing because have been already added
     
     let def_cap_off = 7 + weak_offset;
     let defensive_cap_idx  = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, defense_arr[def_cap_off]);
@@ -932,8 +911,6 @@ pub fn create_npc_entry(cache: &mut VectorCache, bufs: &mut Buffer_Context,
     { tactics_idx[t] = add_entry_if_missing_u32(&mut cache.strings, &mut bufs.string, tactics_arr[t]); }
     
     //Stats
-    //let mut talents_idx = [0u16; 24];
-    //let mut skills_idx  = [0u32; 24];
     let mut lang_idx    = [0u16; 24];
     
     let str_idx = add_entry_if_missing(&mut cache.numbers, &mut bufs.number, stats_arr[0]);
