@@ -53,6 +53,9 @@ use crate::size::*;
 pub mod resistance;
 use crate::resistance::*;
 
+pub mod immunities;
+use crate::immunities::*;
+
 /* Year 2022
 Final Time with everything on CachedIndex, Concurrenr Requests
 Elapsed:                      34014 ms
@@ -377,7 +380,6 @@ fn main() -> Result<(), isahc::Error> {
         sizes          : ByteBuffer::from_bytes(&[0u8;4]),
         senses         : ByteBuffer::from_bytes(&[0u8;4]),
         auras          : ByteBuffer::from_bytes(&[0u8;4]),
-        immunities     : ByteBuffer::from_bytes(&[0u8;4]),
         weaknesses     : ByteBuffer::from_bytes(&[0u8;4]),
         special_attack : ByteBuffer::from_bytes(&[0u8;4]),
         spells         : ByteBuffer::from_bytes(&[0u8;4]),
@@ -481,7 +483,6 @@ fn main() -> Result<(), isahc::Error> {
         result_file.write_all(&buf_context.sizes.to_bytes());
         result_file.write_all(&buf_context.senses.to_bytes());
         result_file.write_all(&buf_context.auras.to_bytes());
-        result_file.write_all(&buf_context.immunities.to_bytes());
         result_file.write_all(&buf_context.weaknesses.to_bytes());
         result_file.write_all(&buf_context.special_attack.to_bytes());
         result_file.write_all(&buf_context.spells.to_bytes());
@@ -505,6 +506,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut entry in mob_entries_vec
         {
             result_file.write_all([entry.pf].as_byte_slice());
+            result_file.write_all([entry.immunities].as_byte_slice());
             result_file.write_all([entry.resistances].as_byte_slice());
             
             result_file.write_all([entry.origin].as_byte_slice());
@@ -550,8 +552,6 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.perception].as_byte_slice());
             result_file.write_all([entry.aura].as_byte_slice());
             
-            for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
-            //for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.speed].as_byte_slice());
@@ -582,6 +582,7 @@ fn main() -> Result<(), isahc::Error> {
         for mut entry in npc_entries_vec
         {
             result_file.write_all([entry.pf].as_byte_slice());
+            result_file.write_all([entry.immunities].as_byte_slice());
             result_file.write_all([entry.resistances].as_byte_slice());
             
             result_file.write_all([entry.origin].as_byte_slice());
@@ -631,8 +632,6 @@ fn main() -> Result<(), isahc::Error> {
             result_file.write_all([entry.perception].as_byte_slice());
             result_file.write_all([entry.aura].as_byte_slice());
             
-            for mut el in entry.immunities  { result_file.write_all([el].as_byte_slice()); }
-            //for mut el in entry.resistances { result_file.write_all([el].as_byte_slice()); }
             for mut el in entry.weaknesses  { result_file.write_all([el].as_byte_slice()); }
             
             result_file.write_all([entry.speed].as_byte_slice());

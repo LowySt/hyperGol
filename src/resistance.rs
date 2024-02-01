@@ -1,7 +1,4 @@
-use bytebuffer::ByteBuffer;
-
 use crate::entries::*;
-use crate::vec_cache::*;
 
 //NOTE: Resitances are represented by a 4bit Type and a 6bit Value.
 //      A single 64bit word contains 6 different resistances and 4 extra bits.

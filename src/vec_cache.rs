@@ -15,7 +15,6 @@ pub struct Buffer_Context
     pub sizes          : ByteBuffer,
     pub senses         : ByteBuffer,
     pub auras          : ByteBuffer,
-    pub immunities     : ByteBuffer,
     pub weaknesses     : ByteBuffer,
     pub special_attack : ByteBuffer, //TODO: Remove. Not used
     pub spells         : ByteBuffer, //TODO: Decide what to do with this? Probably make it into a different things
@@ -43,7 +42,6 @@ pub struct VectorCache
     pub sizes:       Vec::<CachedIndex::<u16>>,
     pub senses:      Vec::<CachedIndex::<u16>>,
     pub auras:       Vec::<CachedIndex::<u16>>,
-    pub immunities:  Vec::<CachedIndex::<u16>>,
     pub weaknesses:  Vec::<CachedIndex::<u16>>,
     pub special:     Vec::<CachedIndex::<u16>>,
     pub spells:      Vec::<CachedIndex::<u32>>,
@@ -70,7 +68,6 @@ impl VectorCache
             sizes:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             senses:      Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             auras:       Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
-            immunities:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             weaknesses:  Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             special:     Vec::<CachedIndex::<u16>>::with_capacity(pre_alloc),
             spells:      Vec::<CachedIndex::<u32>>::with_capacity(pre_alloc),
@@ -125,7 +122,6 @@ pub fn dump_buffers(buf_context: &Buffer_Context)
     println!("sizes:       {}", buf_context.sizes.len());
     println!("senses:      {}", buf_context.senses.len());
     println!("auras:       {}", buf_context.auras.len());
-    println!("immunities:  {}", buf_context.immunities.len());
     println!("weaknesses:  {}", buf_context.weaknesses.len());
     println!("attack:      {}", buf_context.special_attack.len());
     println!("spells:      {}", buf_context.spells.len());
@@ -148,7 +144,6 @@ pub fn total_buffers_size(buf_context: &Buffer_Context) -> usize
     total_size += buf_context.sizes.len();
     total_size += buf_context.senses.len();
     total_size += buf_context.auras.len();
-    total_size += buf_context.immunities.len();
     total_size += buf_context.weaknesses.len();
     total_size += buf_context.special_attack.len();
     total_size += buf_context.spells.len();
